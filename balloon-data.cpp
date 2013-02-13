@@ -36,6 +36,11 @@ const int MAXGPSDAT = 50;
 /// Internal Functions
 //////////////////////////////////////////////////////////////////////////////
 
+bool openFile(ofstream &file, const string &filenm);
+// MODIFIES: file, cout
+// EFFECTS: Opens <file> at file <filenm> in append mode, prints an error and
+//		returns 0if the file does not open
+
 void openPort(int &comnum, int &baud);
 // MODIFIES: Sets comnum to the port that is opened and baud to its baudrate,
 //		modifies cin and cout
@@ -70,16 +75,23 @@ void writeEnd(ofstream &maphtml);
 
 int main ()
 {
+	// Program header
+	cout << "\nBalloon Data - by the Space Whale team\nVersion 0.2.1"
+		<< "\n========================================\n";
+
 	// Prompt for Datafile and Open
 	ofstream datfile;
 	string filenm;
-	cout << "\nFile to store incoming data:\n";
+	cout << "File to store incoming data:\n";
 	cin >> filenm;
-	datfile.open(filenm.c_str(), ios::app);
-	while (!datfile.good()) {
-		cout << "\nCould not open data file."
-			<< "\nFile to store incoming data:\n";
+	while (!openFile(datfile, filenm)) {
+		cout << "File to store incoming data:\n";
+		cin >> filenm;
 	}
+
+	// Write File Header and Save
+	datfile << "Begin New Data\n========================================\n";
+	datfile.close();
 
 	// Prompt for Program Refresh Rate
 	int dlay;
@@ -103,26 +115,36 @@ int main ()
 	while (true) {
 
 		// Read data from the port
-		cout << "\nReading from port ...\n";
+		cout << "Reading from port ..... ";
 		unsigned char buff[MAXBUF];
 		int datnum = RS232_PollComport(comnum, buff, MAXBUF - 1);
+		cout << "Success.\n";
 
 		/// ADD CODE TO VERIFY DATA !!!
 		// Verify Data Packet
+		cout << "Verifying data packet ..... ";
 		verifyPacket(buff);
 
 		// Increment Number of Packets
 		++pkts;
 
 		// Write Data to File
-		cout << "\nWriting to file ...\n";
-		for (int i = 0; i < datnum; ++i) {
-			datfile << buff[i];
+		cout << "Writing to file ..... ";
+		if (openFile(datfile, filenm)) {
+
+			// Write Individual Bytes
+			for (int i = 0; i < datnum; ++i) {
+				datfile << buff[i];
+			}
+			cout << "Success.\n";
+
+			// Save Datafile
+			datfile.close();
 		}
 
 		// Make HTML File
 		ofstream maphtml;
-		maphtml.open("GPSmap.html", ios::trunc);
+		maphtml.open("GPSmap.html", ios_base::trunc);
 		if (!maphtml.good()) {
 			cout << "\nError creating html file.\n";
 		}
@@ -136,11 +158,10 @@ int main ()
 		maphtml.close();
 
 		// Pause For Dlay Seconds
-		cout << "Waiting ... \n\n";
-
+		cout << "Waiting ...\n";
 		#ifdef __GNUC__
 	/// Commented out for compatability with MinGW
-			// sleep(dlay);
+		//	sleep(dlay);
 		#endif
 		#ifdef _WIN32
 			_sleep(dlay * 1000);
@@ -155,6 +176,19 @@ int main ()
 //////////////////////////////////////////////////////////////////////////////
 /// Internal Function Implementations
 //////////////////////////////////////////////////////////////////////////////
+
+bool openFile(ofstream &file, const string &filenm)
+{
+	// Open filenm
+	file.open(filenm.c_str(), ios_base::app);
+	if (!file.good()) {
+		cout << "Could not open datafile.\n";
+		return false;
+	}
+
+	// Indicate Success
+	return true;
+}
 
 void openPort(int &comnum, int &baud)
 {
@@ -179,7 +213,7 @@ void openPort(int &comnum, int &baud)
 
 bool verifyPacket(const unsigned char *buff)
 {
-	cout << "\nData packet is complete.\n";
+	cout << "Success.\n";
 	return true;
 }
 
