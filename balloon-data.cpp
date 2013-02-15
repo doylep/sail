@@ -176,6 +176,8 @@ int main ()
 		int buff_size = RS232_PollComport(comnum, buff, MAXBUF - 1);
 		cout << "Success.\n";
 
+		// Try Analyzing Data
+
 		/// ADD CODE TO VERIFY DATA !!!
 		// Verify Data Packet
 		buff[buff_size] = '\0'; // null terminate the buffer
@@ -211,9 +213,7 @@ int main ()
 		writeHTML(dfilenm, mapdlay, pkts);
 
 		// Send Command to Balloon
-		//sendCMD();
-
-
+		sendCMD(cfilenm, comnum);
 
 	} // Close While Loop
 
