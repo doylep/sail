@@ -38,12 +38,19 @@ const int MAXCMD = 100;
 const char CMDDLIM = '$';
 
 // Default Command
-/// !!!
+const string DFLTCMD = "OKAY$";
 
 
 //////////////////////////////////////////////////////////////////////////////
 /// Internal Functions
 //////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename R>
+void castArray(const T array1[], R array2[], const int arr_size);
+// REQUIRES: array1 and array 2 have at least arr_size elements
+// MODIFIES: array2
+// EFFECTS: Copies the first <arr_size> elements of array1 into array2 making
+//		the appropriate static_cast
 
 bool openDFile(ofstream &file, const string &filenm);
 // MODIFIES: file, cout
@@ -68,6 +75,9 @@ void openPort(int &comnum, int &baud);
 
 bool verifyPacket(const unsigned char *buff);
 // EFFECTS: verifies that the data packet is complete
+
+void parseData(char *data, int data_size);
+/// !!!
 
 void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
 // MODIFIES: cout
@@ -107,7 +117,7 @@ void sendCMD(const string &cfilenm, const int comnum);
 int main ()
 {
 	// Program Header
-	cout << "\nBalloon Data - by the Space Whale team\nVersion 0.2.1"
+	cout << "\nBalloon Data - by the Space Whale team\nVersion 0.2.7"
 		<< "\n========================================\n";
 
 	// Prompt for Datafile and Open
@@ -121,7 +131,7 @@ int main ()
 	}
 
 	// Write File Header and Save
-	datfile << "Begin New Data\n========================================\n";
+	datfile << "\nBegin New Data\n========================================\n";
 	datfile.close();
 
 	// Prompt for Command File
@@ -148,33 +158,52 @@ int main ()
 	// Read data from the port until the cycle is broken
 	while (true) {
 
+		// Pause For Dlay Seconds
+		cout << "Waiting for " << dlay << "seconds.\n";
+		#ifdef __GNUC__
+	/// Commented out for compatability with MinGW
+			//sleep(dlay);
+		#endif
+		#ifdef _WIN32
+			_sleep(dlay * 1000);
+		#endif
+
 		// Read data from the port
-		cout << "Reading from port ..... ";
+		cout << "Reading from port ..... \t";
 		unsigned char buff[MAXBUF];
-		int datnum = RS232_PollComport(comnum, buff, MAXBUF - 1);
+		int buff_size = RS232_PollComport(comnum, buff, MAXBUF - 1);
 		cout << "Success.\n";
 
 		/// ADD CODE TO VERIFY DATA !!!
 		// Verify Data Packet
-		cout << "Verifying data packet ..... ";
+		buff[buff_size] = '\0'; // null terminate the buffer
+		cout << "Verifying data packet ..... \t";
 		verifyPacket(buff);
 
 		// Increment Number of Packets
 		++pkts;
 
+		// Parse Packet Data
+		char data[MAXBUF]; // create a char[] to hold final data
+		int data_size = buff_size;
+		castArray(buff, data, buff_size);
+		cout << "Parsing data ..... \t";
+		parseData(data, data_size);
+
 		// Write Data to File
-		cout << "Writing to file ..... ";
+		cout << "Writing to file ..... \t";
 		if (openDFile(datfile, dfilenm)) {
 
 			// Write Individual Bytes
-			for (int i = 0; i < datnum; ++i) {
-				datfile << buff[i];
+			for (int i = 0; i < data_size; ++i) {
+				datfile << data[i];
 			}
 			cout << "Success.\n";
 
 			// Save Datafile
 			datfile.close();
-		}
+		} else
+			cout << "Error opening the data file.\n";
 
 		// Make HTML File
 		writeHTML(dfilenm, mapdlay, pkts);
@@ -182,15 +211,7 @@ int main ()
 		// Send Command to Balloon
 		//sendCMD();
 
-		// Pause For Dlay Seconds
-		cout << "Waiting ...\n";
-		#ifdef __GNUC__
-	/// Commented out for compatability with MinGW
-			sleep(dlay);
-		#endif
-		#ifdef _WIN32
-			_sleep(dlay * 1000);
-		#endif
+
 
 	} // Close While Loop
 
@@ -202,9 +223,17 @@ int main ()
 /// Internal Function Implementations
 //////////////////////////////////////////////////////////////////////////////
 
+template <typename T, typename R>
+void castArray(const T array1[], R array2[], const int arr_size)
+{
+	// Copy <arr_size> Elements
+	for (int i = 0; i < arr_size; ++i)
+		array2[i] = static_cast<R>(array1[i]);
+}
+
 bool openDFile(ofstream &file, const string &filenm)
 {
-	// Open filenm
+	// Open <filenm>
 	file.open(filenm.c_str(), ios_base::app);
 	if (!file.good()) {
 		cout << "Could not open data file.\n";
@@ -217,7 +246,7 @@ bool openDFile(ofstream &file, const string &filenm)
 
 bool openCFile(ifstream &file, const string &filenm)
 {
-	// Open filenm
+	// Open <filenm>
 	file.open(filenm.c_str());
 	if (!file.good()) {
 		cout << "Could not open command file.\n";
@@ -267,13 +296,87 @@ bool verifyPacket(const unsigned char *buff)
 	return true;
 }
 
+void parseData(char *data, int data_size)
+{
+	// Index to Track Location in Data
+	int ind = 0;
+
+	// Variables to Hold Lat, Lng, tmp data
+	string tmp, lat, lng;
+
+	// Place the Data in a String
+	string raw = data;
+
+	// Try to Parse Data
+	try {
+
+		// Check for "$GPGGA"
+		if (raw.find("$GPGGA") != 0) {
+			string error = "Unable to find $GPGGA.";
+			throw error;
+		}
+
+		// Interate Through 2 Commas
+		for (int i = 0; i < 2; ++i) {
+			tmp = raw.substr(ind, raw.size());
+			ind = ind + tmp.find(",") + 1;
+		}
+
+		// Check Latitude Format
+		if (raw.substr(ind, 1) == "," ) {
+			string error = "Bad Latitude Format.";
+			throw error;
+		}
+
+		// Extract Number and Shift Decimal Point
+		raw.erase(ind + 4, 1);
+		tmp = raw.substr(ind, 2) + "." + raw.substr(ind + 2, 6);
+		string dir = raw.substr(ind + 9,1);
+
+		// Correct North/South
+		if (dir == "S")
+			lat = "-" + tmp;
+		else
+			lat = tmp;
+
+		// Check Longitude Format
+		if (raw.substr(ind + 11, 1) == ",") {
+			string error = "Bad Longitude Format.";
+			throw error;
+		}
+
+		// Extract Number and Shift Decimal Point
+		raw.erase(ind + 16, 1);
+		tmp = raw.substr(ind + 11, 3) + "." + raw.substr(ind + 14, 6);
+		dir = raw.substr(ind + 21,1);
+
+		// Correct East/West
+		if (dir == "W")
+			lng = "-"+tmp;
+		else
+			lng = tmp;
+
+		// Rewrite Data
+		string result = lat + "," + lng + ",";
+		data_size = lat.size() + lng.size() + 2;
+		for (int i = 0; i < data_size; ++i)
+			data[i] = result[i];
+		data[data_size] = '\0'; // null terminate the data
+
+	// Catch Failed Parsing
+	} catch (string error) {
+		cout << "Error: " << error << endl;
+	}
+}
+
 void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
 {
 	// Make HTML File and Write Header
+	cout << "Writing data to HTML file ..... \t";
 	ofstream maphtml;
 	maphtml.open("GPSmap.html", ios_base::trunc);
 	if (!maphtml.good()) {
-		cout << "\nError creating html file.\n";
+		cout << "Error creating html file.\n";
 	}
 	writeHeader(maphtml, mapdlay);
 
@@ -283,6 +386,9 @@ void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
 	// Write HTML File Ending and Close
 	writeEnd(maphtml);
 	maphtml.close();
+
+	// Indicate Success.
+	cout << "Success.\n";
 }
 
 void writeHeader(ofstream &maphtml, int mapdlay)
@@ -311,7 +417,7 @@ void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 	ifstream gpsdat;
 	gpsdat.open(dfilenm.c_str());
 	if (!gpsdat.good()) {
-		cout << "\nCould not open data file.\n";
+		cout << "Could not open data file.\n";
 		return;
 	}
 
@@ -367,24 +473,27 @@ void sendCMD(const string &cfilenm, const int comnum)
 
 	// Read Line into String
 	string cmd;
-	cmdfile.getline(cmd, MAXCMD);
+	cmdfile >> cmd;
 
-	// Send Command if Valid
-	const int cmd_size = cmd.size();
-	if (cmd[cmd_size - 1] == CMDDLIM) {
+	// Check for a Valid Command
+	unsigned char mssg[MAXCMD + 1];
+	int mssg_size = cmd.size();
+	if (cmd[mssg_size - 1] == CMDDLIM) {
+		cout << "Sending command \"" << cmd << "\" ..... \t";
+		castArray(cmd.c_str(), mssg, mssg_size);
 
-		// Transmit Command
-		cout << "Sending command \"" << cmd << "\" ..... ";
-		if (RS232_SendBuf(comnum, cmd.c_str(), cmd_size) != cmd_size)
-			cout << "Error sending command.\n";
-		else
-			cout << "Success.\n";
-
-	// Default Command
+	// Use Default Command
 	} else {
-
-		/// Default Command !!!
+		cout << "Sending default command ..... \t";
+		mssg_size = DFLTCMD.size();
+		castArray(DFLTCMD.c_str(), mssg, mssg_size);
 	}
+
+	// Transmit Command
+	if (RS232_SendBuf(comnum, mssg, mssg_size) != mssg_size)
+		cout << "Error sending command.\n";
+	else
+		cout << "Success.\n";
 
 	// Close Command File
 	cmdfile.close();
