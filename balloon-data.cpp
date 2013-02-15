@@ -1,6 +1,6 @@
 /*     Space Whales Team: Data Packet to Google Maps
-            Last Updated January 29, 2013
-                    By The Space Whales                 */
+            Last Updated February 15, 2013
+		 By The Space Whales                 */
 
 #include <iostream>
 #include <cstdlib>
@@ -76,8 +76,10 @@ void openPort(int &comnum, int &baud);
 bool verifyPacket(const unsigned char *buff);
 // EFFECTS: verifies that the data packet is complete
 
-void parseData(char *data, int data_size);
-/// !!!
+void parseData(char *data, int &data_size);
+// MODIFIES: data, data_size
+// EFFECTS: Parses NMEA strings in data, places them pack into data, and
+//		changes the size of data_size to match the new length of data
 
 void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
 // MODIFIES: cout
@@ -292,11 +294,12 @@ void openPort(int &comnum, int &baud)
 
 bool verifyPacket(const unsigned char *buff)
 {
+	/// Add code to verify data !!!
 	cout << "Success.\n";
 	return true;
 }
 
-void parseData(char *data, int data_size)
+void parseData(char *data, int &data_size)
 {
 	// Index to Track Location in Data
 	int ind = 0;

@@ -9,6 +9,9 @@ and code from https://github.com/doylep/gps_data-map.git by Patton Doyle and Mol
 
 Released under GNU GPL v2 (see licence)
 
+------------
+------------
+
 Usage
 ------------
 
