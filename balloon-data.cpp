@@ -42,6 +42,25 @@ const string DFLTCMD = "OKAY$";
 
 
 //////////////////////////////////////////////////////////////////////////////
+/// Internal Structures
+//////////////////////////////////////////////////////////////////////////////
+
+struct Param{
+// OVERVIEW: Struct that contains all the parameters for the program instance
+
+	ofstream datfile;	// stream that connects to the datafile
+	string dfilenm;		// name of the datafile
+	ifstream cmdfile;	// stream that connects to the commandfile
+	string cfilenm;		// name of the commandfile
+	int dlay;		// delay between each data read
+	int mapdlay;		// delay between each map refresh
+	int comnum;		// number of the com port
+	int baud;		// baud rate for the com port
+	int pkts;		// number of data packets received
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 /// Internal Functions
 //////////////////////////////////////////////////////////////////////////////
 
@@ -52,6 +71,15 @@ void castArray(const T array1[], R array2[], const int arr_size);
 // EFFECTS: Copies the first <arr_size> elements of array1 into array2 making
 //		the appropriate static_cast
 
+bool loadParam(Param &inst, const string &filenm);
+// MODIFIES: inst if <filenm> can be opened
+// EFFECTS: Tries to load program parameters from <filenm> into inst, returns
+//		true if successful and false otherwise
+
+void promptParam(Param &inst);
+// MODIFIES: inst
+// EFFECTS: Prompts for all program parameters and places them in inst
+
 bool openDFile(ofstream &file, const string &filenm);
 // MODIFIES: file, cout
 // EFFECTS: Opens <file> at file <filenm> in append mode, prints an error and
@@ -61,11 +89,6 @@ bool openCFile(ifstream &file, const string &filenm);
 // MODIFIES: file, cout
 // EFFECTS: Opens <file> at file <filenm>, prints an error and returns 0 if
 //		the file does not open
-
-void promptParam(int &dlay, int &mapdlay);
-// MODIFIES: dlay, mapdlay
-// EFFECTS: Prompts for program refresh delay and map refresh delay and places
-//		 the values in dlay and mapdlay, respectively
 
 void openPort(int &comnum, int &baud);
 // MODIFIES: Sets comnum to the port that is opened and baud to its baudrate,
@@ -116,64 +139,56 @@ void sendCMD(const string &cfilenm, const int comnum);
 /// Main Function
 //////////////////////////////////////////////////////////////////////////////
 
-int main ()
+int main (int argc, char *argv[])
 {
+	// Program Instance Information
+	Param inst;
+
 	// Program Header
-	cout << "\nBalloon Data - by the Space Whale team\nVersion 0.2.7"
+	cout << "\nBalloon Data - by the Space Whale team\nVersion 0.2.9"
 		<< "\n========================================\n";
 
-	// Prompt for Datafile and Open
-	ofstream datfile;
-	string dfilenm;
-	cout << "File to store incoming data:\n";
-	cin >> dfilenm;
-	while (!openDFile(datfile, dfilenm)) {
-		cout << "File to store incoming data:\n";
-		cin >> dfilenm;
+	// Try to Load Parameters from File
+	try {
+		// Check for "-s"
+		if (argc != 1 && argv[1][0] == '-' && argv[1][1] == 's') {
+
+			// Check for No File Specification
+			if (argc == 2)
+				throw false;
+
+			// Try to Load Specified File
+			if (!loadParam(inst, argv[2]))
+				throw false;
+
+		// Try to Load Default
+		} else {
+			string dconfg = "default.config";
+			if (!loadParam(inst, dconfg.c_str()))
+				throw false;
+		}
+	// Catch Failure to Load Parameters
+	} catch (...) {
+		promptParam(inst);
 	}
-
-	// Write File Header and Save
-	datfile << "\nBegin New Data\n========================================\n";
-	datfile.close();
-
-	// Prompt for Command File
-	ifstream cmdfile;
-	string cfilenm;
-	cout << "File to send commands to balloon:\n";
-	cin >> cfilenm;
-	while (!openCFile(cmdfile, cfilenm)){
-		cout << "File to send commands to balloon:\n";
-		cin >> cfilenm;
-	}
-
-	// Prompt for Other Parameters
-	int dlay, mapdlay;
-	promptParam(dlay, mapdlay);
-
-	// Prompt for and Open Serial Port
-	int comnum, baud;
-	openPort(comnum, baud);
-
-	// Count Number of Packets
-	int pkts = 0;
 
 	// Read data from the port until the cycle is broken
 	while (true) {
 
 		// Pause For Dlay Seconds
-		cout << "Waiting for " << dlay << "seconds.\n";
+		cout << "Waiting for " << inst.dlay << " seconds.\n";
 		#ifdef __GNUC__
 	/// Commented out for compatability with MinGW
-			//sleep(dlay);
+			//sleep(inst.dlay);
 		#endif
 		#ifdef _WIN32
-			_sleep(dlay * 1000);
+			_sleep(inst.dlay * 1000);
 		#endif
 
 		// Read data from the port
 		cout << "Reading from port ..... \t";
 		unsigned char buff[MAXBUF];
-		int buff_size = RS232_PollComport(comnum, buff, MAXBUF - 1);
+		int buff_size = RS232_PollComport(inst.comnum, buff, MAXBUF - 1);
 		cout << "Success.\n";
 
 		// Try Analyzing Data
@@ -185,7 +200,7 @@ int main ()
 		verifyPacket(buff);
 
 		// Increment Number of Packets
-		++pkts;
+		++inst.pkts;
 
 		// Parse Packet Data
 		char data[MAXBUF]; // create a char[] to hold final data
@@ -196,24 +211,24 @@ int main ()
 
 		// Write Data to File
 		cout << "Writing to file ..... \t";
-		if (openDFile(datfile, dfilenm)) {
+		if (openDFile(inst.datfile, inst.dfilenm)) {
 
 			// Write Individual Bytes
 			for (int i = 0; i < data_size; ++i) {
-				datfile << data[i];
+				inst.datfile << data[i];
 			}
 			cout << "Success.\n";
 
 			// Save Datafile
-			datfile.close();
+			inst.datfile.close();
 		} else
-			cout << "Error opening the data file.\n";
+			cout << "Error opening the datafile.\n";
 
 		// Make HTML File
-		writeHTML(dfilenm, mapdlay, pkts);
+		writeHTML(inst.dfilenm, inst.mapdlay, inst.pkts);
 
 		// Send Command to Balloon
-		sendCMD(cfilenm, comnum);
+		sendCMD(inst.cfilenm, inst.comnum);
 
 	} // Close While Loop
 
@@ -233,12 +248,76 @@ void castArray(const T array1[], R array2[], const int arr_size)
 		array2[i] = static_cast<R>(array1[i]);
 }
 
+
+
+bool loadParam(Param &inst, const string &filenm)
+{
+	// Try to Open <filenm>
+	cout << "Loading parameters from " << filenm << " ..... \t";
+	ifstream file;
+	file.open(filenm.c_str());
+	if (!file.good()) {
+		cout << "Error opening file.\n";
+		return false;
+	}
+
+	// Read parameters
+	file >> inst.dfilenm >> inst.cfilenm >> inst.dlay >> inst.mapdlay
+		>> inst.comnum >> inst.baud;
+
+	// Count Number of Packets
+	inst.pkts = 0;
+
+	// Indicate Success
+	cout << "Success.\n";
+	return true;
+}
+
+
+void promptParam(Param &inst)
+{
+	// Prompt for Datafile and Open
+	cout << "File to store incoming data:\n";
+	cin >> inst.dfilenm;
+	while (!openDFile(inst.datfile, inst.dfilenm)) {
+		cout << "File to store incoming data:\n";
+		cin >> inst.dfilenm;
+	}
+
+	// Write File Header and Save
+	inst.datfile << "\nBegin New Data\n========================================\n";
+	inst.datfile.close();
+
+	// Prompt for Command File
+	cout << "File to send commands to balloon:\n";
+	cin >> inst.cfilenm;
+	while (!openCFile(inst.cmdfile, inst.cfilenm)){
+		cout << "File to send commands to balloon:\n";
+		cin >> inst.cfilenm;
+	}
+
+	// Prompt for Program Refresh Rate
+	cout << "Delay between each data read (in seconds):\n";
+	cin >> inst.dlay;
+
+	// Prompt for HTML Refresh Rate
+	cout << "Delay between each HTML refresh (in seconds):"
+		<< "\n[Zero for never]\n";
+	cin >> inst.mapdlay;
+
+	// Prompt for and Open Serial Port
+	openPort(inst.comnum, inst.baud);
+
+	// Count Number of Packets
+	inst.pkts = 0;
+}
+
 bool openDFile(ofstream &file, const string &filenm)
 {
 	// Open <filenm>
 	file.open(filenm.c_str(), ios_base::app);
 	if (!file.good()) {
-		cout << "Could not open data file.\n";
+		cout << "Could not open datafile.\n";
 		return false;
 	}
 
@@ -251,7 +330,7 @@ bool openCFile(ifstream &file, const string &filenm)
 	// Open <filenm>
 	file.open(filenm.c_str());
 	if (!file.good()) {
-		cout << "Could not open command file.\n";
+		cout << "Could not open commandfile.\n";
 		return false;
 	}
 
@@ -259,17 +338,6 @@ bool openCFile(ifstream &file, const string &filenm)
 	return true;
 }
 
-void promptParam(int &dlay, int &mapdlay)
-{
-	// Prompt for Program Refresh Rate
-	cout << "Delay between each data read (in seconds):\n";
-	cin >> dlay;
-
-	// Prompt for HTML Refresh Rate
-	cout << "Delay between each HTML refresh (in seconds):"
-		<< "\n[Zero for never]\n";
-	cin >>mapdlay;
-}
 
 void openPort(int &comnum, int &baud)
 {
@@ -420,7 +488,7 @@ void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 	ifstream gpsdat;
 	gpsdat.open(dfilenm.c_str());
 	if (!gpsdat.good()) {
-		cout << "Could not open data file.\n";
+		cout << "Could not open datafile.\n";
 		return;
 	}
 
