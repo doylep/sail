@@ -19,4 +19,4 @@ The program attempts to open default.config before prompting you for input.  You
 [ Datafile | Commandfile | Program Delay | HTML Delay | Port Number | Baud Rate ]
 
 Command Structure:
-Commands in the command file must contain no spaces and be terminated with global constant "CMDDLIM".  Only commands that follow this structure will be transmitted.
+Commands in the command file must contain no spaces and be terminated with global constant "CMDDLIM" ('$' by default).  Only commands that follow this structure will be transmitted.

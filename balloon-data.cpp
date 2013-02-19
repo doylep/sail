@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
 		int buff_size = RS232_PollComport(inst.comnum, buff, MAXBUF - 1);
 		cout << "Success.\n";
 
-		// Try Analyzing Data
+		/// ADD TRY BLOCK !!!
 
 		/// ADD CODE TO VERIFY DATA !!!
 		// Verify Data Packet
@@ -206,11 +206,11 @@ int main (int argc, char *argv[])
 		char data[MAXBUF]; // create a char[] to hold final data
 		int data_size = buff_size;
 		castArray(buff, data, buff_size);
-		cout << "Parsing data ..... \t";
+		cout << "Parsing data ..... \t\t";
 		parseData(data, data_size);
 
 		// Write Data to File
-		cout << "Writing to file ..... \t";
+		cout << "Writing to file ..... \t\t";
 		if (openDFile(inst.datfile, inst.dfilenm)) {
 
 			// Write Individual Bytes
@@ -264,6 +264,12 @@ bool loadParam(Param &inst, const string &filenm)
 	// Read parameters
 	file >> inst.dfilenm >> inst.cfilenm >> inst.dlay >> inst.mapdlay
 		>> inst.comnum >> inst.baud;
+
+	// Attempt to Open Port
+	if (RS232_OpenComport(inst.comnum, inst.baud)) {
+		cout << "Error opening port.\n";
+		return false;
+	}
 
 	// Count Number of Packets
 	inst.pkts = 0;
@@ -382,7 +388,7 @@ void parseData(char *data, int &data_size)
 	try {
 
 		// Check for "$GPGGA"
-		if (raw.find("$GPGGA") != 0) {
+		if (raw.find("$GPGGA") == string::npos) {
 			string error = "Unable to find $GPGGA.";
 			throw error;
 		}
@@ -394,7 +400,7 @@ void parseData(char *data, int &data_size)
 		}
 
 		// Check Latitude Format
-		if (raw.substr(ind, 1) == "," ) {
+		if (raw.substr(ind, 1) == ",") {
 			string error = "Bad Latitude Format.";
 			throw error;
 		}
@@ -434,6 +440,9 @@ void parseData(char *data, int &data_size)
 			data[i] = result[i];
 		data[data_size] = '\0'; // null terminate the data
 
+		// Indicate Success
+		cout << "Success.\n";
+
 	// Catch Failed Parsing
 	} catch (string error) {
 		cout << "Error: " << error << endl;
@@ -443,7 +452,7 @@ void parseData(char *data, int &data_size)
 void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
 {
 	// Make HTML File and Write Header
-	cout << "Writing data to HTML file ..... \t";
+	cout << "Writing data to HTML file .....\t";
 	ofstream maphtml;
 	maphtml.open("GPSmap.html", ios_base::trunc);
 	if (!maphtml.good()) {
