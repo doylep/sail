@@ -145,7 +145,10 @@ int main (int argc, char *argv[])
 	Param inst;
 
 	// Program Header
-	cout << "\nBalloon Data - by the Space Whale team\nVersion 0.2.9"
+	cout << "Balloon Data, Version 0.2.9"
+		<< "\nDesigned by the Space Whale team"
+		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
+		<< "\n\nReleased under GNU GPL v2 (see Licence)"
 		<< "\n========================================\n";
 
 	// Try to Load Parameters from File
@@ -198,6 +201,9 @@ int main (int argc, char *argv[])
 		buff[buff_size] = '\0'; // null terminate the buffer
 		cout << "Verifying data packet ..... \t";
 		verifyPacket(buff);
+
+		// Display Received Data
+		cout << "Received \"" << buff << "\"\n";
 
 		// Increment Number of Packets
 		++inst.pkts;
