@@ -104,6 +104,12 @@ void parseData(char *data, int &data_size);
 // EFFECTS: Parses NMEA strings in data, places them pack into data, and
 //		changes the size of data_size to match the new length of data
 
+void writeData(Param &inst, const char *data, const int data_size);
+// REQUIRES: data has at least <data_size> valid elements
+// MODIFIES: inst.datfile
+// EFFECTS: Tries to write <data> to <inst.dfilenm> and prints success or
+//		failure to the terminal
+
 void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
 // MODIFIES: cout
 // EFFECTS: Writes the data in <dfilenm> to a map in GPSmap.html assuming
@@ -214,19 +220,7 @@ int main (int argc, char *argv[])
 			parseData(data, data_size);
 
 			// Write Data to File
-			cout << "Writing to file ..... \t\t";
-			if (openDFile(inst.datfile, inst.dfilenm)) {
-
-				// Write Individual Bytes
-				for (int i = 0; i < data_size; ++i) {
-					inst.datfile << data[i];
-				}
-				cout << "Success.\n";
-
-				// Save Datafile
-				inst.datfile.close();
-			} else
-				cout << "Error opening the datafile.\n";
+			writeData(inst, data, data_size);
 
 			// Make HTML File
 			writeHTML(inst.dfilenm, inst.mapdlay, inst.pkts);
@@ -455,6 +449,28 @@ void parseData(char *data, int &data_size)
 	} catch (string error) {
 		cout << "Error: " << error << endl;
 	}
+}
+
+void writeData(Param &inst, const char *data, const int data_size)
+{
+	// Write Data to File
+	cout << "Writing to file ..... \t\t";
+	if (openDFile(inst.datfile, inst.dfilenm)) {
+
+		// Write Individual Bytes
+		for (int i = 0; i < data_size; ++i) {
+			inst.datfile << data[i];
+		}
+
+		// Save Datafile
+		inst.datfile.close();
+
+		// Indicate Success
+		cout << "Success.\n";
+
+	// Print Error
+	} else
+		cout << "Error opening the datafile.\n";
 }
 
 void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
