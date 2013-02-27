@@ -1,5 +1,5 @@
 /*     Space Whales Team: Data Packet to Google Maps
-            Last Updated February 15, 2013
+            Last Updated February 29, 2013
 		 By The Space Whales                 */
 
 #include <iostream>
@@ -145,7 +145,7 @@ int main (int argc, char *argv[])
 	Param inst;
 
 	// Program Header
-	cout << "Balloon Data, Version 0.2.9"
+	cout << "Balloon Data, Version 0.3.0"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see Licence)"
@@ -181,7 +181,7 @@ int main (int argc, char *argv[])
 		// Pause For Dlay Seconds
 		cout << "Waiting for " << inst.dlay << " seconds.\n";
 		#ifdef __GNUC__
-	/// Commented out for compatability with MinGW
+		/// Commented out for compatability with MinGW
 			//sleep(inst.dlay);
 		#endif
 		#ifdef _WIN32
@@ -194,44 +194,46 @@ int main (int argc, char *argv[])
 		int buff_size = RS232_PollComport(inst.comnum, buff, MAXBUF - 1);
 		cout << "Success.\n";
 
-		/// ADD TRY BLOCK !!!
+		// Try to Use Packet
+		try {
 
-		/// ADD CODE TO VERIFY DATA !!!
-		// Verify Data Packet
-		buff[buff_size] = '\0'; // null terminate the buffer
-		cout << "Verifying data packet ..... \t";
-		verifyPacket(buff);
+			/// ADD CODE TO VERIFY DATA !!!
+			// Verify Data Packet
+			buff[buff_size] = '\0'; // null terminate the buffer
+			cout << "Verifying data packet ..... \t";
+			verifyPacket(buff);
 
-		// Display Received Data
-		cout << "Received \"" << buff << "\"\n";
+			// Increment Number of Packets
+			++inst.pkts;
 
-		// Increment Number of Packets
-		++inst.pkts;
+			// Parse Packet Data
+			char data[MAXBUF]; // create a char[] to hold final data
+			int data_size = buff_size;
+			castArray(buff, data, buff_size);
+			cout << "Parsing data ..... \t\t";
+			parseData(data, data_size);
 
-		// Parse Packet Data
-		char data[MAXBUF]; // create a char[] to hold final data
-		int data_size = buff_size;
-		castArray(buff, data, buff_size);
-		cout << "Parsing data ..... \t\t";
-		parseData(data, data_size);
+			// Write Data to File
+			cout << "Writing to file ..... \t\t";
+			if (openDFile(inst.datfile, inst.dfilenm)) {
 
-		// Write Data to File
-		cout << "Writing to file ..... \t\t";
-		if (openDFile(inst.datfile, inst.dfilenm)) {
+				// Write Individual Bytes
+				for (int i = 0; i < data_size; ++i) {
+					inst.datfile << data[i];
+				}
+				cout << "Success.\n";
 
-			// Write Individual Bytes
-			for (int i = 0; i < data_size; ++i) {
-				inst.datfile << data[i];
-			}
-			cout << "Success.\n";
+				// Save Datafile
+				inst.datfile.close();
+			} else
+				cout << "Error opening the datafile.\n";
 
-			// Save Datafile
-			inst.datfile.close();
-		} else
-			cout << "Error opening the datafile.\n";
+			// Make HTML File
+			writeHTML(inst.dfilenm, inst.mapdlay, inst.pkts);
 
-		// Make HTML File
-		writeHTML(inst.dfilenm, inst.mapdlay, inst.pkts);
+		// Catch Unusable Packet
+		} catch (...) {}
+
 
 		// Send Command to Balloon
 		sendCMD(inst.cfilenm, inst.comnum);
@@ -354,7 +356,7 @@ bool openCFile(ifstream &file, const string &filenm)
 void openPort(int &comnum, int &baud)
 {
 	// Prompt for Port
-	cout << "Comport to open:\n[USB ports start at 16 for Linux]\n";
+	cout << "Comport to open:\n[Start at 0 for Windows and 16 for Linux]\n";
 	cin >> comnum;
 
 	// Prompt for Baudrate
