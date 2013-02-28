@@ -404,27 +404,29 @@ static void parseData(char *data, int &data_size)
 			ind = ind + tmp.find(",") + 1;
 		}
 
-		// Check Latitude Format
+		// Check That There is a Comma
 		if (raw.substr(ind, 1) == ",") {
-			string error = "Bad Latitude Format.";
+			string error = "No Latitude Data.";
 			throw error;
 		}
 
-		/// HUH? !!!
-		bool valid = false;
+		// Check Latitude Characters
+		bool valid = true;
 		for (int i = 0; i < 9; ++i) {
 
-			///!!!
+			// Don't Check the Period
 			if (i != 4) {
-				char num = raw.at(ind + i);
 
-                                /// Verify Value
-                                if ((num < 58) && (num > 47))
-					valid = true;
+                                // Verify all are Numbers
+                                char num = raw.at(ind + i);
+                                if ((num > 58) || (num < 47)) {
+					valid = false;
+					break;
+				}
 			}
 		}
 
-		// Process Latitude
+		// Try to Process Latitude
 		if (valid) {
 
 			// Extract Number and Shift Decimal Point
@@ -440,28 +442,35 @@ static void parseData(char *data, int &data_size)
 
 			// Reset Valid
 			valid = false;
-		}
 
-		// Check Longitude Format
-		if (raw.substr(ind + 11, 1) == ",") {
-			string error = "Bad Longitude Format.";
+		// Else Throw Error
+		} else {
+			string error = "Bad Latitude Format.";
 			throw error;
 		}
 
-		/// !!!
+		// Check That There is a Comma
+		if (raw.substr(ind + 11, 1) == ",") {
+			string error = "No Longitude Data.";
+			throw error;
+		}
+
+		// Check Longitude Characters
 		for (int i = 0; i < 10; ++i) {
 
-			/// !!!
+			// Don't Check the Period
 			if (i != 5) {
 				char num = raw.at(ind + i + 11);
 
-                                /// Verify Value
-				if ((num < 58) && (num > 47))
-					valid = true;
+                                // Verify all are Numbers
+                                if ((num > 58) || (num < 47)) {
+					valid = false;
+					break;
+				}
 			}
 		}
 
-                // Process Longitude
+                // Try to Process Longitude
 		if (valid) {
 
 			// Extract Number and Shift Decimal Point
@@ -474,6 +483,11 @@ static void parseData(char *data, int &data_size)
 				lng = "-"+tmp;
 			else
 				lng = tmp;
+
+		// Else Throw Error
+		} else {
+			string error = "Bad Longitude Format.";
+			throw error;
 		}
 
 		// Rewrite Data
