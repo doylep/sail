@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include "rs232.h"
 
 // Choose Approprite System Library
@@ -39,6 +40,9 @@ const char CMDDLIM = '$';
 
 // Default Command
 const string DFLTCMD = "OKAY$";
+
+// Conversion Constant
+const double DCONV = 0.016666666666667;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -103,6 +107,10 @@ static void parseData(char *data, int &data_size);
 // MODIFIES: data, data_size
 // EFFECTS: Parses NMEA strings in data, places them pack into data, and
 //		changes the size of data_size to match the new length of data
+
+static string convrtData(const string &raw);
+// REQUIRES: raw is valid NMEA GPGGA string
+// EFFECTS: Returns the string converted to decimal degrees
 
 static void writeData(Param &inst, const char *data, const int data_size);
 // REQUIRES: data has at least <data_size> valid elements
@@ -176,6 +184,7 @@ int main (int argc, char *argv[])
 			if (!loadParam(inst, dconfg.c_str()))
 				throw false;
 		}
+
 	// Catch Failure to Load Parameters
 	} catch (...) {
 		promptParam(inst);
@@ -228,12 +237,15 @@ int main (int argc, char *argv[])
 		// Catch Unusable Packet
 		} catch (...) {}
 
-
 		// Send Command to Balloon
 		sendCMD(inst.cfilenm, inst.comnum);
 
 	} // Close While Loop
 
+	// Close the Port
+	RS232_CloseComport(inst.comnum);
+
+	// Exit
 	return 0;
 }
 
@@ -431,7 +443,7 @@ static void parseData(char *data, int &data_size)
 
 			// Extract Number and Shift Decimal Point
 			raw.erase(ind + 4, 1);
-			tmp = raw.substr(ind, 2) + "." + raw.substr(ind + 2, 6);
+			tmp = convrtData(raw.substr(ind, 9));
 			string dir = raw.substr(ind + 9, 1);
 
 			// Correct North/South
@@ -480,7 +492,7 @@ static void parseData(char *data, int &data_size)
 
 			// Correct East/West
 			if (dir == "W")
-				lng = "-"+tmp;
+				lng = "-" + tmp;
 			else
 				lng = tmp;
 
@@ -504,6 +516,26 @@ static void parseData(char *data, int &data_size)
 	} catch (string error) {
 		cout << "Error: " << error << endl;
 	}
+}
+
+static string convrtData(const string &raw)
+{
+	// Remove the Degrees
+	string fixd = raw.substr(0, raw.size() - 7);
+
+	// Remove the Minutes
+	string minut = raw.substr(raw.size() - 7, 7);
+	double dminut = atof(minut.c_str());
+
+	// Convert the Minutes
+	dminut *= DCONV;
+	stringstream tmp;
+	tmp << dminut;
+	minut = tmp.str();
+
+	// Return Result
+	fixd = fixd + minut.substr(1, minut.size() - 1);
+	return fixd;
 }
 
 static void writeData(Param &inst, const char *data, const int data_size)
