@@ -65,75 +65,75 @@ struct Param{
 //////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename R>
-void castArray(const T array1[], R array2[], const int arr_size);
+static void castArray(const T array1[], R array2[], const int arr_size);
 // REQUIRES: array1 and array 2 have at least arr_size elements
 // MODIFIES: array2
 // EFFECTS: Copies the first <arr_size> elements of array1 into array2 making
 //		the appropriate static_cast
 
-bool loadParam(Param &inst, const string &filenm);
+static bool loadParam(Param &inst, const string &filenm);
 // MODIFIES: inst if <filenm> can be opened
 // EFFECTS: Tries to load program parameters from <filenm> into inst, returns
 //		true if successful and false otherwise
 
-void promptParam(Param &inst);
+static void promptParam(Param &inst);
 // MODIFIES: inst
 // EFFECTS: Prompts for all program parameters and places them in inst
 
-bool openDFile(ofstream &file, const string &filenm);
+static bool openDFile(ofstream &file, const string &filenm);
 // MODIFIES: file, cout
 // EFFECTS: Opens <file> at file <filenm> in append mode, prints an error and
 //		returns 0 if the file does not open
 
-bool openCFile(ifstream &file, const string &filenm);
+static bool openCFile(ifstream &file, const string &filenm);
 // MODIFIES: file, cout
 // EFFECTS: Opens <file> at file <filenm>, prints an error and returns 0 if
 //		the file does not open
 
-void openPort(int &comnum, int &baud);
+static void openPort(int &comnum, int &baud);
 // MODIFIES: Sets comnum to the port that is opened and baud to its baudrate,
 //		modifies cin and cout
 // EFFECTS: Prompts cin until <comnum> and <baud> successfully opens port
 //		<comnum> with baudrate <baud>
 
-bool verifyPacket(const unsigned char *buff);
+static bool verifyPacket(const unsigned char *buff);
 // EFFECTS: verifies that the data packet is complete
 
-void parseData(char *data, int &data_size);
+static void parseData(char *data, int &data_size);
 // MODIFIES: data, data_size
 // EFFECTS: Parses NMEA strings in data, places them pack into data, and
 //		changes the size of data_size to match the new length of data
 
-void writeData(Param &inst, const char *data, const int data_size);
+static void writeData(Param &inst, const char *data, const int data_size);
 // REQUIRES: data has at least <data_size> valid elements
 // MODIFIES: inst.datfile
 // EFFECTS: Tries to write <data> to <inst.dfilenm> and prints success or
 //		failure to the terminal
 
-void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
+static void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
 // MODIFIES: cout
 // EFFECTS: Writes the data in <dfilenm> to a map in GPSmap.html assuming
 //		<pkts> data packets with a delay of <mapdlay>
 
-void writeHeader(ofstream &maphtml, const int mapdlay);
+static void writeHeader(ofstream &maphtml, const int mapdlay);
 // REQUIRES: maphtml points to an open ofstream
 // MODIFIES: maphtml
 // EFFECTS: Prints the HTML header to the file for GPS mapping with refresh
 //		delay <mapdlay>
 
-void writePts(ofstream &maphtml, const string &dfilenm, const int pkts);
+static void writePts(ofstream &maphtml, const string &dfilenm, const int pkts);
 // REQUIRES: maphtml points to an open ofstream, dfilenm is the name of
 //		valid datafile with no more than <pkts> datapoints
 // MODIFIES: maphtml
 // EFFECTS: Write the the lat and lon points in the file <dfilenm> to the
 //		HTML of maphtml
 
-void writeEnd(ofstream &maphtml);
+static void writeEnd(ofstream &maphtml);
 // REQUIRES: maphtml points to an open ofstream
 // MODIFIES: maphtml
 // EFFECTS: Prints the HTML end to the file for the GPS mapping
 
-void sendCMD(const string &cfilenm, const int comnum);
+static void sendCMD(const string &cfilenm, const int comnum);
 // REQUIRES: cfilenm is the name of a valid command file, comnum is the
 //		serial port in use
 // MODIFIES: cout
@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
 	Param inst;
 
 	// Program Header
-	cout << "Balloon Data, Version 0.3.0"
+	cout << "Balloon Data, Version 0.3.1 beta"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see Licence)"
@@ -243,16 +243,14 @@ int main (int argc, char *argv[])
 //////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename R>
-void castArray(const T array1[], R array2[], const int arr_size)
+static void castArray(const T array1[], R array2[], const int arr_size)
 {
 	// Copy <arr_size> Elements
 	for (int i = 0; i < arr_size; ++i)
 		array2[i] = static_cast<R>(array1[i]);
 }
 
-
-
-bool loadParam(Param &inst, const string &filenm)
+static bool loadParam(Param &inst, const string &filenm)
 {
 	// Try to Open <filenm>
 	cout << "Loading parameters from " << filenm << " ..... \t";
@@ -281,8 +279,7 @@ bool loadParam(Param &inst, const string &filenm)
 	return true;
 }
 
-
-void promptParam(Param &inst)
+static void promptParam(Param &inst)
 {
 	// Prompt for Datafile and Open
 	cout << "File to store incoming data:\n";
@@ -320,7 +317,7 @@ void promptParam(Param &inst)
 	inst.pkts = 0;
 }
 
-bool openDFile(ofstream &file, const string &filenm)
+static bool openDFile(ofstream &file, const string &filenm)
 {
 	// Open <filenm>
 	file.open(filenm.c_str(), ios_base::app);
@@ -333,7 +330,7 @@ bool openDFile(ofstream &file, const string &filenm)
 	return true;
 }
 
-bool openCFile(ifstream &file, const string &filenm)
+static bool openCFile(ifstream &file, const string &filenm)
 {
 	// Open <filenm>
 	file.open(filenm.c_str());
@@ -346,8 +343,7 @@ bool openCFile(ifstream &file, const string &filenm)
 	return true;
 }
 
-
-void openPort(int &comnum, int &baud)
+static void openPort(int &comnum, int &baud)
 {
 	// Prompt for Port
 	cout << "Comport to open:\n[Start at 0 for Windows and 16 for Linux]\n";
@@ -368,14 +364,14 @@ void openPort(int &comnum, int &baud)
 	}
 }
 
-bool verifyPacket(const unsigned char *buff)
+static bool verifyPacket(const unsigned char *buff)
 {
 	/// Add code to verify data !!!
 	cout << "Success.\n";
 	return true;
 }
 
-void parseData(char *data, int &data_size)
+static void parseData(char *data, int &data_size)
 {
 	// Index to Track Location in Data
 	int ind = 0;
@@ -395,6 +391,13 @@ void parseData(char *data, int &data_size)
 			throw error;
 		}
 
+		// Verify Length
+		ind = raw.find("$GPGGA");
+		if ((raw.size() - ind) < 42) {
+			string error = "Truncated GPS Data.";
+			throw error;
+		}
+
 		// Interate Through 2 Commas
 		for (int i = 0; i < 2; ++i) {
 			tmp = raw.substr(ind, raw.size());
@@ -407,16 +410,37 @@ void parseData(char *data, int &data_size)
 			throw error;
 		}
 
-		// Extract Number and Shift Decimal Point
-		raw.erase(ind + 4, 1);
-		tmp = raw.substr(ind, 2) + "." + raw.substr(ind + 2, 6);
-		string dir = raw.substr(ind + 9,1);
+		/// HUH? !!!
+		bool valid = false;
+		for (int i = 0; i < 9; ++i) {
 
-		// Correct North/South
-		if (dir == "S")
-			lat = "-" + tmp;
-		else
-			lat = tmp;
+			///!!!
+			if (i != 4) {
+				char num = raw.at(ind + i);
+
+                                /// Verify Value
+                                if ((num < 58) && (num > 47))
+					valid = true;
+			}
+		}
+
+		// Process Latitude
+		if (valid) {
+
+			// Extract Number and Shift Decimal Point
+			raw.erase(ind + 4, 1);
+			tmp = raw.substr(ind, 2) + "." + raw.substr(ind + 2, 6);
+			string dir = raw.substr(ind + 9, 1);
+
+			// Correct North/South
+			if (dir == "S")
+				lat = "-" + tmp;
+			else
+				lat = tmp;
+
+			// Reset Valid
+			valid = false;
+		}
 
 		// Check Longitude Format
 		if (raw.substr(ind + 11, 1) == ",") {
@@ -424,16 +448,33 @@ void parseData(char *data, int &data_size)
 			throw error;
 		}
 
-		// Extract Number and Shift Decimal Point
-		raw.erase(ind + 16, 1);
-		tmp = raw.substr(ind + 11, 3) + "." + raw.substr(ind + 14, 6);
-		dir = raw.substr(ind + 21,1);
+		/// !!!
+		for (int i = 0; i < 10; ++i) {
 
-		// Correct East/West
-		if (dir == "W")
-			lng = "-"+tmp;
-		else
-			lng = tmp;
+			/// !!!
+			if (i != 5) {
+				char num = raw.at(ind + i + 11);
+
+                                /// Verify Value
+				if ((num < 58) && (num > 47))
+					valid = true;
+			}
+		}
+
+                // Process Longitude
+		if (valid) {
+
+			// Extract Number and Shift Decimal Point
+			raw.erase(ind + 16, 1);
+			tmp = raw.substr(ind + 11, 3) + "." + raw.substr(ind + 14, 6);
+			string dir = raw.substr(ind + 21, 1);
+
+			// Correct East/West
+			if (dir == "W")
+				lng = "-"+tmp;
+			else
+				lng = tmp;
+		}
 
 		// Rewrite Data
 		string result = lat + "," + lng + ",";
@@ -451,7 +492,7 @@ void parseData(char *data, int &data_size)
 	}
 }
 
-void writeData(Param &inst, const char *data, const int data_size)
+static void writeData(Param &inst, const char *data, const int data_size)
 {
 	// Write Data to File
 	cout << "Writing to file ..... \t\t";
@@ -473,7 +514,7 @@ void writeData(Param &inst, const char *data, const int data_size)
 		cout << "Error opening the datafile.\n";
 }
 
-void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
+static void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
 {
 	// Make HTML File and Write Header
 	cout << "Writing data to HTML file .....\t";
@@ -495,7 +536,7 @@ void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
 	cout << "Success.\n";
 }
 
-void writeHeader(ofstream &maphtml, int mapdlay)
+static void writeHeader(ofstream &maphtml, int mapdlay)
 {
 	// Write Beginning of HTML Header
 	maphtml << "<!DOCTYPE html>\n<html>\n	<head>\n		<meta name=\"viewport\" content=\"initial-scale=1.0, user-scalable=no\" />";
@@ -515,7 +556,7 @@ void writeHeader(ofstream &maphtml, int mapdlay)
 		<< "\n		lats = [";
 }
 
-void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
+static void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 {
 	// Open Datafile
 	ifstream gpsdat;
@@ -558,7 +599,7 @@ void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 	gpsdat.close();
 }
 
-void writeEnd(ofstream &maphtml)
+static void writeEnd(ofstream &maphtml)
 {
 	// Write File End
 	maphtml << "];\n\n		var location;"
@@ -569,7 +610,7 @@ void writeEnd(ofstream &maphtml)
 		<< "\n		<div id=\"map_canvas\" style=\"width:100%; height:100%\"></div>\n	</body>\n</html>";
 }
 
-void sendCMD(const string &cfilenm, const int comnum)
+static void sendCMD(const string &cfilenm, const int comnum)
 {
 	// Open Command File
 	ifstream cmdfile;
