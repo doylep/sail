@@ -7,9 +7,18 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include "rs232.h"
 
-// Choose Approprite System Library
+/// Testing Switch
+//#define _LOCALTEST_
+
+// Choose Appropriate Port Library
+#ifdef _LOCALTEST_
+#include "rsfile.h"
+# else
+#include "rs232.h"
+#endif
+
+// Choose Appropriate System Library
 #ifdef __GNUC__
 #include <unistd.h>
 #else
@@ -44,6 +53,9 @@ const string DFLTCMD = "OKAY$";
 // Conversion Constant
 const double DCONV = 0.016666666666667;
 
+// Float Output Precision
+const int PRECSN = 10;
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// Internal Structures
@@ -61,6 +73,17 @@ struct Param{
 	int comnum;		// number of the com port
 	int baud;		// baud rate for the com port
 	int pkts;		// number of data packets received
+};
+
+struct Packet{
+// OVERVIEW: Struct that contains all the data transmitted in the packet
+
+	double xaccel;		// x acceleration
+	double yaccel;		// y acceleration
+	double zaccel;		// z acceleration
+	double temp; 		// temperture
+	double lat;		// latitude
+	double lng;		// longitude
 };
 
 
@@ -103,19 +126,18 @@ static void openPort(int &comnum, int &baud);
 static bool verifyPacket(const unsigned char *buff);
 // EFFECTS: verifies that the data packet is complete
 
-static void parseData(char *data, int &data_size);
+static void parseData(Packet &pket, char *data, int &data_size);
 // MODIFIES: data, data_size
 // EFFECTS: Parses NMEA strings in data, places them pack into data, and
 //		changes the size of data_size to match the new length of data
 
-static string convrtData(const string &raw);
+static double convrtData(const string &raw);
 // REQUIRES: raw is valid NMEA GPGGA string
 // EFFECTS: Returns the string converted to decimal degrees
 
-static void writeData(Param &inst, const char *data, const int data_size);
-// REQUIRES: data has at least <data_size> valid elements
-// MODIFIES: inst.datfile
-// EFFECTS: Tries to write <data> to <inst.dfilenm> and prints success or
+static void writeData(Param &inst, const Packet &pket);
+// MODIFIES: inst.datfile, cout
+// EFFECTS: Tries to write pket data to <inst.dfilenm> and prints success or
 //		failure to the terminal
 
 static void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
@@ -155,11 +177,12 @@ static void sendCMD(const string &cfilenm, const int comnum);
 
 int main (int argc, char *argv[])
 {
-	// Program Instance Information
+	// Set Program Precision
 	Param inst;
+	inst.datfile.precision(10);
 
 	// Program Header
-	cout << "Balloon Data, Version 0.3.1 beta"
+	cout << "Balloon Data, Version 0.3.3"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see Licence)"
@@ -218,18 +241,20 @@ int main (int argc, char *argv[])
 			cout << "Verifying data packet ..... \t";
 			verifyPacket(buff);
 
-			// Increment Number of Packets
-			++inst.pkts;
-
 			// Parse Packet Data
+			Packet pket;
 			char data[MAXBUF]; // create a char[] to hold final data
 			int data_size = buff_size;
 			castArray(buff, data, buff_size);
 			cout << "Parsing data ..... \t\t";
-			parseData(data, data_size);
+			parseData(pket, data, data_size);
+
+			// Increment Number of Packets
+			/// FIX Packet Count !!!
+			++inst.pkts;
 
 			// Write Data to File
-			writeData(inst, data, data_size);
+			writeData(inst, pket);
 
 			// Make HTML File
 			writeHTML(inst.dfilenm, inst.mapdlay, inst.pkts);
@@ -301,8 +326,7 @@ static void promptParam(Param &inst)
 		cin >> inst.dfilenm;
 	}
 
-	// Write File Header and Save
-	inst.datfile << "\nBegin New Data\n========================================\n";
+	// Close Datafile
 	inst.datfile.close();
 
 	// Prompt for Command File
@@ -383,13 +407,11 @@ static bool verifyPacket(const unsigned char *buff)
 	return true;
 }
 
-static void parseData(char *data, int &data_size)
+static void parseData(Packet &pket, char *data, int &data_size)
 {
-	// Index to Track Location in Data
+	// Local Variables
 	int ind = 0;
-
-	// Variables to Hold Lat, Lng, tmp data
-	string tmp, lat, lng;
+	string tmp;
 
 	// Place the Data in a String
 	string raw = data;
@@ -416,8 +438,8 @@ static void parseData(char *data, int &data_size)
 			ind = ind + tmp.find(",") + 1;
 		}
 
-		// Check That There is a Comma
-		if (raw.substr(ind, 1) == ",") {
+		// Check That There isn't a Comma
+		if (raw.at(ind) == ',') {
 			string error = "No Latitude Data.";
 			throw error;
 		}
@@ -431,7 +453,7 @@ static void parseData(char *data, int &data_size)
 
                                 // Verify all are Numbers
                                 char num = raw.at(ind + i);
-                                if ((num > 58) || (num < 47)) {
+                                if ((num > '9') || (num < '0')) {
 					valid = false;
 					break;
 				}
@@ -442,18 +464,12 @@ static void parseData(char *data, int &data_size)
 		if (valid) {
 
 			// Extract Number and Shift Decimal Point
-			raw.erase(ind + 4, 1);
-			tmp = convrtData(raw.substr(ind, 9));
-			string dir = raw.substr(ind + 9, 1);
+			pket.lat = convrtData(raw.substr(ind, 9));
+			char dir = raw.at(ind + 10);
 
 			// Correct North/South
-			if (dir == "S")
-				lat = "-" + tmp;
-			else
-				lat = tmp;
-
-			// Reset Valid
-			valid = false;
+			if (dir == 'S')
+				pket.lat = -pket.lat;
 
 		// Else Throw Error
 		} else {
@@ -461,8 +477,8 @@ static void parseData(char *data, int &data_size)
 			throw error;
 		}
 
-		// Check That There is a Comma
-		if (raw.substr(ind + 11, 1) == ",") {
+		// Check That There isn't a Comma
+		if (raw.at(ind + 12) == ',') {
 			string error = "No Longitude Data.";
 			throw error;
 		}
@@ -472,10 +488,10 @@ static void parseData(char *data, int &data_size)
 
 			// Don't Check the Period
 			if (i != 5) {
-				char num = raw.at(ind + i + 11);
+				char num = raw.at(ind + i + 12);
 
                                 // Verify all are Numbers
-                                if ((num > 58) || (num < 47)) {
+                                if ((num > '9') || (num < '0')) {
 					valid = false;
 					break;
 				}
@@ -486,28 +502,18 @@ static void parseData(char *data, int &data_size)
 		if (valid) {
 
 			// Extract Number and Shift Decimal Point
-			raw.erase(ind + 16, 1);
-			tmp = raw.substr(ind + 11, 3) + "." + raw.substr(ind + 14, 6);
-			string dir = raw.substr(ind + 21, 1);
+			pket.lng = convrtData(raw.substr(ind + 12, 10));
+			char dir = raw.at(ind + 23);
 
 			// Correct East/West
-			if (dir == "W")
-				lng = "-" + tmp;
-			else
-				lng = tmp;
+			if (dir == 'W')
+				pket.lng = -pket.lng;
 
 		// Else Throw Error
 		} else {
 			string error = "Bad Longitude Format.";
 			throw error;
 		}
-
-		// Rewrite Data
-		string result = lat + "," + lng + ",";
-		data_size = lat.size() + lng.size() + 2;
-		for (int i = 0; i < data_size; ++i)
-			data[i] = result[i];
-		data[data_size] = '\0'; // null terminate the data
 
 		// Indicate Success
 		cout << "Success.\n";
@@ -518,36 +524,31 @@ static void parseData(char *data, int &data_size)
 	}
 }
 
-static string convrtData(const string &raw)
+static double convrtData(const string &raw)
 {
-	// Remove the Degrees
-	string fixd = raw.substr(0, raw.size() - 7);
-
-	// Remove the Minutes
-	string minut = raw.substr(raw.size() - 7, 7);
-	double dminut = atof(minut.c_str());
+	// Extract the Minutes
+	string smin = raw.substr(raw.size() - 7, 7);
+	double fixd = atof(smin.c_str());
 
 	// Convert the Minutes
-	dminut *= DCONV;
-	stringstream tmp;
-	tmp << dminut;
-	minut = tmp.str();
+	fixd *= DCONV;
+
+	// Add the Degrees
+	string sdeg = raw.substr(0, raw.size() - 7);
+	fixd += atof(sdeg.c_str());
 
 	// Return Result
-	fixd = fixd + minut.substr(1, minut.size() - 1);
 	return fixd;
 }
 
-static void writeData(Param &inst, const char *data, const int data_size)
+static void writeData(Param &inst, const Packet &pket)
 {
 	// Write Data to File
 	cout << "Writing to file ..... \t\t";
 	if (openDFile(inst.datfile, inst.dfilenm)) {
 
-		// Write Individual Bytes
-		for (int i = 0; i < data_size; ++i) {
-			inst.datfile << data[i];
-		}
+		// Write Individual Data Parts
+		inst.datfile << pket.lat << "," << pket.lng << ",";
 
 		// Save Datafile
 		inst.datfile.close();
@@ -616,6 +617,8 @@ static void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 	double lat[pkts], lon[pkts];
 	int numpts = 0;
 
+	/// Account for Previous data (packet count) !!!
+
 	// Read Until File Ends
 	while (gpsdat.good()) {
 
@@ -631,6 +634,9 @@ static void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 		// Increment count
 		++numpts;
 	}
+
+	// Correct Number of Points
+	--numpts;
 
 	// Write Latitude Data
 	for (int i = 0; i < numpts; ++i)
