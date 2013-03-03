@@ -36,7 +36,7 @@ using namespace std;
 const int MAXBUF = 1000;
 
 // Maximum Number of Data Points
-const int MAXPTS = 1000;
+const int MAXPTS = 4000;
 
 // Maximum GPS Data Point Size
 const int MAXGPSDAT = 50;
@@ -72,7 +72,6 @@ struct Param{
 	int mapdlay;		// delay between each map refresh
 	int comnum;		// number of the com port
 	int baud;		// baud rate for the com port
-	int pkts;		// number of data packets received
 };
 
 struct Packet{
@@ -126,10 +125,10 @@ static void openPort(int &comnum, int &baud);
 static bool verifyPacket(const unsigned char *buff);
 // EFFECTS: verifies that the data packet is complete
 
-static void parseData(Packet &pket, char *data, int &data_size);
+static void parseData(Packet &pket, const char *data, const int &data_size);
 // MODIFIES: data, data_size
-// EFFECTS: Parses NMEA strings in data, places them pack into data, and
-//		changes the size of data_size to match the new length of data
+// EFFECTS: Parses NMEA strings in data and places them into pket,
+//		throws an error string if unable
 
 static double convrtData(const string &raw);
 // REQUIRES: raw is valid NMEA GPGGA string
@@ -137,24 +136,25 @@ static double convrtData(const string &raw);
 
 static void writeData(Param &inst, const Packet &pket);
 // MODIFIES: inst.datfile, cout
-// EFFECTS: Tries to write pket data to <inst.dfilenm> and prints success or
-//		failure to the terminal
+// EFFECTS: Tries to write pket data to <inst.dfilenm>, prints success to
+//		the terminal and throws an error string for failure
 
-static void writeHTML(const string &dfilenm, const int mapdlay, const int pkts);
+static void writeHTML(const string &dfilenm, const int mapdlay);
 // MODIFIES: cout
-// EFFECTS: Writes the data in <dfilenm> to a map in GPSmap.html assuming
-//		<pkts> data packets with a delay of <mapdlay>
+// EFFECTS: Writes the data in <dfilenm> to a map in GPSmap.html with a
+//		delay of <mapdlay>, throws an err
 
 static void writeHeader(ofstream &maphtml, const int mapdlay);
 // REQUIRES: maphtml points to an open ofstream
 // MODIFIES: maphtml
 // EFFECTS: Prints the HTML header to the file for GPS mapping with refresh
-//		delay <mapdlay>
+//		delay <mapdlay>, prints success to the terminal and throws
+//		an error string for failure
 
-static void writePts(ofstream &maphtml, const string &dfilenm, const int pkts);
+static void writePts(ofstream &maphtml, const string &dfilenm);
 // REQUIRES: maphtml points to an open ofstream, dfilenm is the name of
 //		valid datafile with no more than <pkts> datapoints
-// MODIFIES: maphtml
+// MODIFIES: maphtml, cout
 // EFFECTS: Write the the lat and lon points in the file <dfilenm> to the
 //		HTML of maphtml
 
@@ -182,7 +182,7 @@ int main (int argc, char *argv[])
 	inst.datfile.precision(10);
 
 	// Program Header
-	cout << "Balloon Data, Version 0.3.3"
+	cout << "Balloon Data, Version 0.3.4"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see Licence)"
@@ -218,12 +218,10 @@ int main (int argc, char *argv[])
 
 		// Pause For Dlay Seconds
 		cout << "Waiting for " << inst.dlay << " seconds.\n";
-		#ifdef __GNUC__
-		/// Commented out for compatability with MinGW
-			//sleep(inst.dlay);
-		#endif
 		#ifdef _WIN32
 			_sleep(inst.dlay * 1000);
+		#else
+			sleep(inst.dlay);
 		#endif
 
 		// Read data from the port
@@ -243,24 +241,22 @@ int main (int argc, char *argv[])
 
 			// Parse Packet Data
 			Packet pket;
-			char data[MAXBUF]; // create a char[] to hold final data
+			char data[MAXBUF]; // create a char[] to hold data
 			int data_size = buff_size;
 			castArray(buff, data, buff_size);
 			cout << "Parsing data ..... \t\t";
 			parseData(pket, data, data_size);
 
-			// Increment Number of Packets
-			/// FIX Packet Count !!!
-			++inst.pkts;
-
 			// Write Data to File
 			writeData(inst, pket);
 
 			// Make HTML File
-			writeHTML(inst.dfilenm, inst.mapdlay, inst.pkts);
+			writeHTML(inst.dfilenm, inst.mapdlay);
 
 		// Catch Unusable Packet
-		} catch (...) {}
+		} catch (string error) {
+			cout << "Error: " << error;
+		}
 
 		// Send Command to Balloon
 		sendCMD(inst.cfilenm, inst.comnum);
@@ -308,9 +304,6 @@ static bool loadParam(Param &inst, const string &filenm)
 		return false;
 	}
 
-	// Count Number of Packets
-	inst.pkts = 0;
-
 	// Indicate Success
 	cout << "Success.\n";
 	return true;
@@ -348,9 +341,6 @@ static void promptParam(Param &inst)
 
 	// Prompt for and Open Serial Port
 	openPort(inst.comnum, inst.baud);
-
-	// Count Number of Packets
-	inst.pkts = 0;
 }
 
 static bool openDFile(ofstream &file, const string &filenm)
@@ -407,7 +397,7 @@ static bool verifyPacket(const unsigned char *buff)
 	return true;
 }
 
-static void parseData(Packet &pket, char *data, int &data_size)
+static void parseData(Packet &pket, const char *data, const int &data_size)
 {
 	// Local Variables
 	int ind = 0;
@@ -416,112 +406,104 @@ static void parseData(Packet &pket, char *data, int &data_size)
 	// Place the Data in a String
 	string raw = data;
 
-	// Try to Parse Data
-	try {
-
-		// Check for "$GPGGA"
-		if (raw.find("$GPGGA") == string::npos) {
-			string error = "Unable to find $GPGGA.";
-			throw error;
-		}
-
-		// Verify Length
-		ind = raw.find("$GPGGA");
-		if ((raw.size() - ind) < 42) {
-			string error = "Truncated GPS Data.";
-			throw error;
-		}
-
-		// Interate Through 2 Commas
-		for (int i = 0; i < 2; ++i) {
-			tmp = raw.substr(ind, raw.size());
-			ind = ind + tmp.find(",") + 1;
-		}
-
-		// Check That There isn't a Comma
-		if (raw.at(ind) == ',') {
-			string error = "No Latitude Data.";
-			throw error;
-		}
-
-		// Check Latitude Characters
-		bool valid = true;
-		for (int i = 0; i < 9; ++i) {
-
-			// Don't Check the Period
-			if (i != 4) {
-
-                                // Verify all are Numbers
-                                char num = raw.at(ind + i);
-                                if ((num > '9') || (num < '0')) {
-					valid = false;
-					break;
-				}
-			}
-		}
-
-		// Try to Process Latitude
-		if (valid) {
-
-			// Extract Number and Shift Decimal Point
-			pket.lat = convrtData(raw.substr(ind, 9));
-			char dir = raw.at(ind + 10);
-
-			// Correct North/South
-			if (dir == 'S')
-				pket.lat = -pket.lat;
-
-		// Else Throw Error
-		} else {
-			string error = "Bad Latitude Format.";
-			throw error;
-		}
-
-		// Check That There isn't a Comma
-		if (raw.at(ind + 12) == ',') {
-			string error = "No Longitude Data.";
-			throw error;
-		}
-
-		// Check Longitude Characters
-		for (int i = 0; i < 10; ++i) {
-
-			// Don't Check the Period
-			if (i != 5) {
-				char num = raw.at(ind + i + 12);
-
-                                // Verify all are Numbers
-                                if ((num > '9') || (num < '0')) {
-					valid = false;
-					break;
-				}
-			}
-		}
-
-                // Try to Process Longitude
-		if (valid) {
-
-			// Extract Number and Shift Decimal Point
-			pket.lng = convrtData(raw.substr(ind + 12, 10));
-			char dir = raw.at(ind + 23);
-
-			// Correct East/West
-			if (dir == 'W')
-				pket.lng = -pket.lng;
-
-		// Else Throw Error
-		} else {
-			string error = "Bad Longitude Format.";
-			throw error;
-		}
-
-		// Indicate Success
-		cout << "Success.\n";
-
-	// Catch Failed Parsing
-	} catch (string error) {
-		cout << "Error: " << error << endl;
+	// Check for "$GPGGA"
+	if (raw.find("$GPGGA") == string::npos) {
+		string error = "Unable to find $GPGGA.\n";
+		throw error;
 	}
+
+	// Verify Length
+	ind = raw.find("$GPGGA");
+	if ((raw.size() - ind) < 42) {
+		string error = "Truncated GPS Data.\n";
+		throw error;
+	}
+
+	// Interate Through 2 Commas
+	for (int i = 0; i < 2; ++i) {
+		tmp = raw.substr(ind, raw.size());
+		ind = ind + tmp.find(",") + 1;
+	}
+
+	// Check That There isn't a Comma
+	if (raw.at(ind) == ',') {
+		string error = "No Latitude Data.\n";
+		throw error;
+	}
+
+	// Check Latitude Characters
+	bool valid = true;
+	for (int i = 0; i < 9; ++i) {
+
+		// Don't Check the Period
+		if (i != 4) {
+
+			// Verify all are Numbers
+			char num = raw.at(ind + i);
+			if ((num > '9') || (num < '0')) {
+				valid = false;
+				break;
+			}
+		}
+	}
+
+	// Try to Process Latitude
+	if (valid) {
+
+		// Extract Number and Shift Decimal Point
+		pket.lat = convrtData(raw.substr(ind, 9));
+		char dir = raw.at(ind + 10);
+
+		// Correct North/South
+		if (dir == 'S')
+			pket.lat = -pket.lat;
+
+	// Else Throw Error
+	} else {
+		string error = "Bad Latitude Format.\n";
+		throw error;
+	}
+
+	// Check That There isn't a Comma
+	if (raw.at(ind + 12) == ',') {
+		string error = "No Longitude Data.\n";
+		throw error;
+	}
+
+	// Check Longitude Characters
+	for (int i = 0; i < 10; ++i) {
+
+		// Don't Check the Period
+		if (i != 5) {
+			char num = raw.at(ind + i + 12);
+
+			// Verify all are Numbers
+			if ((num > '9') || (num < '0')) {
+				valid = false;
+				break;
+			}
+		}
+	}
+
+	// Try to Process Longitude
+	if (valid) {
+
+		// Extract Number and Shift Decimal Point
+		pket.lng = convrtData(raw.substr(ind + 12, 10));
+		char dir = raw.at(ind + 23);
+
+		// Correct East/West
+		if (dir == 'W')
+			pket.lng = -pket.lng;
+
+	// Else Throw Error
+	} else {
+		string error = "Bad Longitude Format.\n";
+		throw error;
+	}
+
+	// Indicate Success
+	cout << "Success.\n";
 }
 
 static double convrtData(const string &raw)
@@ -557,23 +539,26 @@ static void writeData(Param &inst, const Packet &pket)
 		cout << "Success.\n";
 
 	// Print Error
-	} else
-		cout << "Error opening the datafile.\n";
+	} else {
+		string error = "Error opening the datafile.\n";
+		throw error;
+	}
 }
 
-static void writeHTML(const string &dfilenm, const int mapdlay, const int pkts)
+static void writeHTML(const string &dfilenm, const int mapdlay)
 {
 	// Make HTML File and Write Header
 	cout << "Writing data to HTML file .....\t";
 	ofstream maphtml;
 	maphtml.open("GPSmap.html", ios_base::trunc);
 	if (!maphtml.good()) {
-		cout << "Error creating html file.\n";
+		string error = "Error creating html file.\n";
+		throw error;
 	}
 	writeHeader(maphtml, mapdlay);
 
 	// Read Data from File and Place on Map
-	writePts(maphtml, dfilenm, pkts);
+	writePts(maphtml, dfilenm);
 
 	// Write HTML File Ending and Close
 	writeEnd(maphtml);
@@ -603,7 +588,7 @@ static void writeHeader(ofstream &maphtml, int mapdlay)
 		<< "\n		lats = [";
 }
 
-static void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
+static void writePts(ofstream &maphtml, const string &dfilenm)
 {
 	// Open Datafile
 	ifstream gpsdat;
@@ -614,10 +599,8 @@ static void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 	}
 
 	// Storage for Lat/Long Data
-	double lat[pkts], lon[pkts];
-	int numpts = 0;
-
-	/// Account for Previous data (packet count) !!!
+	double lat[MAXPTS], lon[MAXPTS];
+	int numpts = 0, pnt = 0;
 
 	// Read Until File Ends
 	while (gpsdat.good()) {
@@ -625,23 +608,25 @@ static void writePts(ofstream &maphtml, const string &dfilenm, int pkts)
 		// Read Latitude
 		char tmp[MAXGPSDAT];
 		gpsdat.getline(tmp, MAXGPSDAT, ',');
-		lat[numpts] = atof(tmp);
+		lat[pnt] = atof(tmp);
 
 		// Read Longitude
 		gpsdat.getline(tmp, MAXGPSDAT, ',');
-		lon[numpts] = atof(tmp);
+		lon[pnt] = atof(tmp);
 
 		// Increment count
-		++numpts;
+		pnt = (pnt + 1) % MAXPTS;
+		if (numpts < MAXPTS)
+			++numpts;
 	}
 
-	// Correct Number of Points
+	// Don't Use End-of-File
 	--numpts;
 
 	// Write Latitude Data
 	for (int i = 0; i < numpts; ++i)
 		maphtml << lat[i] << ",";
-	maphtml << "];\n		lngs = [";
+	maphtml << "];\n\t\tlngs = [";
 
 	// Write Longitude Data
 	for (int i = 0; i < numpts; ++i)
