@@ -9,20 +9,13 @@
 #include <sstream>
 
 /// Testing Switch
-//#define _LOCALTEST_
+// #define _LOCALTEST_
 
 // Choose Appropriate Port Library
 #ifdef _LOCALTEST_
 #include "rsfile.h"
 # else
 #include "rs232.h"
-#endif
-
-// Choose Appropriate System Library
-#ifdef __GNUC__
-#include <unistd.h>
-#else
-#include <Windows.h>
 #endif
 
 using namespace std;
@@ -45,10 +38,10 @@ const int MAXGPSDAT = 50;
 const int MAXCMD = 100;
 
 // Command Delimeter
-const char CMDDLIM = '$';
+const char CMDDLIM = '@';
 
 // Default Command
-const string DFLTCMD = "OKAY$";
+const string DFLTCMD = "OKAY@";
 
 // Conversion Constant
 const double DCONV = 0.016666666666667;
@@ -122,8 +115,10 @@ static void openPort(int &comnum, int &baud);
 // EFFECTS: Prompts cin until <comnum> and <baud> successfully opens port
 //		<comnum> with baudrate <baud>
 
-static bool verifyPacket(const unsigned char *buff);
-// EFFECTS: verifies that the data packet is complete
+static void verifyPacket(const unsigned char *buff, const int buff_size);
+// MODIFIES: cout
+// EFFECTS: Tries to verify the contents of buff, prints success to the
+//		terminal and throws an error string for failure
 
 static void parseData(Packet &pket, const char *data, const int &data_size);
 // MODIFIES: data, data_size
@@ -237,7 +232,7 @@ int main (int argc, char *argv[])
 			// Verify Data Packet
 			buff[buff_size] = '\0'; // null terminate the buffer
 			cout << "Verifying data packet ..... \t";
-			verifyPacket(buff);
+			verifyPacket(buff, buff_size);
 
 			// Parse Packet Data
 			Packet pket;
@@ -390,11 +385,17 @@ static void openPort(int &comnum, int &baud)
 	}
 }
 
-static bool verifyPacket(const unsigned char *buff)
+static void verifyPacket(const unsigned char *buff, const int buff_size)
 {
 	/// Add code to verify data !!!
+	// Check for Received Data
+	if (buff_size == 0) {
+		string error = "No Data Received.\n";
+		throw error;
+	}
+
+	// Indicate Success
 	cout << "Success.\n";
-	return true;
 }
 
 static void parseData(Packet &pket, const char *data, const int &data_size)
