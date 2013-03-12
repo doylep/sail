@@ -34,14 +34,15 @@ class Packet{
 	bool gps;		// flag to indicate good gps data
 	bool sens;		// flag to indicate good sensor data
 
-	void verifyPacket(const string &raw);
-	// MODIFIES: cout
-	// EFFECTS: Tries to verify the contents of raw, prints success to the
-	//		terminal and throws an error string for failure
+	double extractSens(string &raw);
+	// MODIFIES: raw, cout
+	// EFFECTS: Removes any data up to and including SENSDLIM from raw,
+	//		returns it as a double if possible, throws string
+	//		"Invalid" if not
 
-	void parseSens(const string &raw);
-	// MODIFIES: this, cout
-	// EFFECTS: Parses sensor data at the beginning of raw and places them
+	void parseSens(string &raw);
+	// MODIFIES: this, raw, cout
+	// EFFECTS: Extracts sensor data at the beginning of raw and places it
 	//		into this, prints success to the terminal and throws
 	//		an error string for failure
 
@@ -55,6 +56,25 @@ class Packet{
 	// REQUIRES: raw is valid NMEA GPGGA string
 	// EFFECTS: Returns the string converted to decimal degrees
 
+	void writeHeader(ofstream &maphtml, const int mapdlay);
+	// REQUIRES: maphtml points to an open ofstream
+	// MODIFIES: maphtml
+	// EFFECTS: Prints the HTML header to the file for GPS mapping with refresh
+	//		delay <mapdlay>, prints success to the terminal and throws
+	//		an error string for failure
+
+	void writePts(ofstream &maphtml, const string &dfilenm);
+	// REQUIRES: maphtml points to an open ofstream, dfilenm is the name of
+	//		valid datafile
+	// MODIFIES: maphtml, cout
+	// EFFECTS: Write the the lat and lon points in the file <dfilenm> to the
+	//		HTML of maphtml
+
+	void writeEnd(ofstream &maphtml);
+	// REQUIRES: maphtml points to an open ofstream
+	// MODIFIES: maphtml
+	// EFFECTS: Prints the HTML end to the file for the GPS mapping
+
 public:
 	void parseData(const unsigned char *buff, const int buff_size);
 	// REQUIRES: buff is NULL terminated
@@ -63,9 +83,17 @@ public:
 	//		errors to cout
 
 	void writeData(Param &inst);
-	// MODIFIES: inst.datfile, cout
-	// EFFECTS: Tries to write pket data to <inst.dfilenm>, prints success to
-	//		the terminal and throws an error string for failure
+	// MODIFIES: inst.datfile, cout, GPSmap.html
+	// EFFECTS: Tries to write pket data to <inst.dfilenm>, if successful
+	//		writes the data in <dfilenm> to a map in GPSmap.html with
+	//		a delay of <mapdlay>, prints success to the terminal and
+	//		throws an error string for failure
+
+	void writeHTML(const string &dfilenm, const int mapdlay);
+	// MODIFIES: cout
+	// EFFECTS: Writes the data in <dfilenm> to a map in GPSmap.html with a
+	//		delay of <mapdlay>, prints success to the terminal and
+	//		throws an error string for failure or no data
 
 };
 

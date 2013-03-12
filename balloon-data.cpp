@@ -28,12 +28,10 @@ int main (int argc, char *argv[])
 	inst.datfile.precision(PRECSN);
 
 	// Program Header
-	cout << "Balloon Data, Version 0.4.0 alpha"
+	cout << "Balloon Data, Version 0.4.0"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see Licence)"
-		<< "\n\nThis program is still alpha quality."
-		<< "\n\tUse at your own risk."
 		<< "\n========================================\n";
 
 	// Try to Load Parameters from File
@@ -79,16 +77,20 @@ int main (int argc, char *argv[])
 		buff[buff_size] = '\0'; // null terminate the buffer
 		cout << "Success.\n";
 
-		/// ADD CODE TO VERIFY DATA !!!
 		// Parse Packet Data
 		Packet pket;
 		pket.parseData(buff, buff_size);
 
-		// Write Data to File
-		pket.writeData(inst);
+		// Try to Write Data
+		cout << "Writing to file ..... \t\t";
+		try {
+			// Write Data to File and Update HTML
+			pket.writeData(inst);
 
-		// Make HTML File
-		writeHTML(inst.dfilenm, inst.mapdlay);
+		// Catch Bad File Write
+		} catch (string error) {
+			cout << "Error: " << error;
+		}
 
 		// Send Command to Balloon
 		sendCMD(inst.cfilenm, inst.comnum);

@@ -18,90 +18,75 @@ using namespace std;
 /// Class Function Implementations
 //////////////////////////////////////////////////////////////////////////////
 
-void Packet::verifyPacket(const string &raw)
+double Packet::extractSens(string &raw)
 {
-	// Check for Any Data
-	if (raw.size() == 0) {
-		string error = "No Data Received.\n";
+	// Find Data Boundaries
+	unsigned int indx = 0, endx = 0;
+	endx = raw.find(SENSDLIM, indx + 1);
+
+	// Check For Valid Length
+	if ((endx == string::npos) || (endx - indx == 1)) {
+		string error = "Invalid";
 		throw error;
 	}
 
-	// Check for Valid Sensor Data
-	int ind = raw.find(DATDLIM);
-	if ((raw.find(DATDLIM, ind + 1) - ind) < 24) {
-
-		// Look for Temperature Data in First Section
-		if (ind < 24) {
-			string error = "Invalid Sensor Data.\n";
-			throw error;
-		}
-
-		// Indicate Missing Echo
-		throw ind;
-	}
-
-	// Indicate Success
-	cout << "Success.\n";
-}
-
-void Packet::parseSens(const string &raw)
-{
-	// Get pressure data
-	int ind = 0;
-	string var = raw.substr(ind, 3);
+	// Try to Extract Data
+	string var = raw.substr(indx, endx - indx - 1);
 
 	// Attempt Extraction
-	if (!(pres = atof(var.c_str()))) {
-		string error = "Invalid Pressure.\n";
+	double reslt;
+	if (!(reslt = atof(var.c_str()))) {
+		string error = "Invalid";
 		throw error;
 	}
 
-	// Convert pressure
-	pres /= (1024 * 0.00776);
+	// Advance String
+	raw = raw.substr(endx + 1);
 
-	// Get Humidity Data
-	ind += 4;
-	var = raw.substr(ind, 3);
-	if (!(humd = atof(var.c_str()))) {
-		string error = "Invalid Humidity.\n";
+	// Return Value
+	return reslt;
+}
+
+void Packet::parseSens(string &raw)
+{
+	// Try to Extract Data
+	string dattyp;
+	try {
+		// Get Pressure
+		dattyp = "pressure data";
+		pres = extractSens(raw);
+
+		// Convert Pressure
+		pres /= (1024 * 0.00776);
+
+		// Get Humidity
+		dattyp = "humidity data";
+		humd = extractSens(raw);
+
+		// Convert Humidity
+		humd = ((LOWV * humd / 1024) - 0.958) / 0.03068;
+
+		// Get Acceleration
+		dattyp = "acceleration data";
+		for (int i = 0; i < 3; ++i) {
+			accel[i] = extractSens(raw);
+
+			// Covert Data
+			accel[i] = ((LOWV * accel[i] / 1024) - 1.0725) * (-1000 / .22);
+		}
+
+		// Get Temperature
+		dattyp = "temperature data";
+		for (int i = 0; i < 2; ++i) {
+			temp[i] = extractSens(raw);
+
+			// Convert Data
+			temp[i] = (LOWV * temp[i] / 1024) / .01 - 32;
+		}
+
+	} catch (string error) {
+		error = error + " " + dattyp + ".\n";
 		throw error;
-	}
-
-	// Convert Humidity
-	humd = ((LOWV * humd / 1024) - 0.958) / 0.03068;
-
-	// Get Accelerometer Data
-	for (int i = 0; i < 3; ++i) {
-
-		// Extract Data
-		var = raw.substr(ind, 2);
-		if (!(accel[i] = atof(var.c_str()))) {
-			string error = "Invalid Acceration.\n";
-			throw error;
-		}
-
-		// Covert Data
-		accel[i] = ((LOWV * accel[i] / 1024) - 1.0725) * (-1000 / .22);
-
-		// Move to Next Point
-		ind = ind + 3;
-	}
-
-	// Get Temperature Data
-	for (int i = 0; i < 2; ++i) {
-
-		// Extract Data
-		var = raw.substr(ind, 3);
-		if (!(temp[i] = atof(var.c_str()))) {
-			string error = "Invalid Temperature.\n";
-			throw error;
-		}
-
-                // Convert Data
-                temp[i] = (LOWV * temp[i] / 1024) / .01 - 32;
-
-                // Move to Next Point
-                ind = ind+4;
 	}
 
 	// Indicate Success
@@ -111,7 +96,7 @@ void Packet::parseSens(const string &raw)
 void Packet::parseGPS(const string &raw)
 {
 	// Local Variables
-	int ind = 0;
+	int indx = 0;
 	string tmp;
 
 	// Check for "$GPGGA"
@@ -121,20 +106,20 @@ void Packet::parseGPS(const string &raw)
 	}
 
 	// Verify Length
-	ind = raw.find("$GPGGA");
-	if ((raw.size() - ind) < 42) {
+	indx = raw.find("$GPGGA");
+	if ((raw.size() - indx) < 42) {
 		string error = "Truncated GPS Data.\n";
 		throw error;
 	}
 
 	// Interate Through 2 Commas
 	for (int i = 0; i < 2; ++i) {
-		tmp = raw.substr(ind, raw.size());
-		ind = ind + tmp.find(",") + 1;
+		tmp = raw.substr(indx);
+		indx = indx + tmp.find(",") + 1;
 	}
 
 	// Check That There isn't a Comma
-	if (raw.at(ind) == ',') {
+	if (raw.at(indx) == ',') {
 		string error = "No Latitude Data.\n";
 		throw error;
 	}
@@ -147,7 +132,7 @@ void Packet::parseGPS(const string &raw)
 		if (i != 4) {
 
 			// Verify all are Numbers
-			char num = raw.at(ind + i);
+			char num = raw.at(indx + i);
 			if ((num > '9') || (num < '0')) {
 				valid = false;
 				break;
@@ -159,8 +144,8 @@ void Packet::parseGPS(const string &raw)
 	if (valid) {
 
 		// Extract Number and Shift Decimal Point
-		lat = convrtData(raw.substr(ind, 9));
-		char dir = raw.at(ind + 10);
+		lat = convrtData(raw.substr(indx, 9));
+		char dir = raw.at(indx + 10);
 
 		// Correct North/South
 		if (dir == 'S')
@@ -173,7 +158,7 @@ void Packet::parseGPS(const string &raw)
 	}
 
 	// Check That There isn't a Comma
-	if (raw.at(ind + 12) == ',') {
+	if (raw.at(indx + 12) == ',') {
 		string error = "No Longitude Data.\n";
 		throw error;
 	}
@@ -183,7 +168,7 @@ void Packet::parseGPS(const string &raw)
 
 		// Don't Check the Period
 		if (i != 5) {
-			char num = raw.at(ind + i + 12);
+			char num = raw.at(indx + i + 12);
 
 			// Verify all are Numbers
 			if ((num > '9') || (num < '0')) {
@@ -197,8 +182,8 @@ void Packet::parseGPS(const string &raw)
 	if (valid) {
 
 		// Extract Number and Shift Decimal Point
-		lng = convrtData(raw.substr(ind + 12, 10));
-		char dir = raw.at(ind + 23);
+		lng = convrtData(raw.substr(indx + 12, 10));
+		char dir = raw.at(indx + 23);
 
 		// Correct East/West
 		if (dir == 'W')
@@ -231,25 +216,122 @@ double Packet::convrtData(const string &raw)
 	return fixd;
 }
 
+void Packet::writeHeader(ofstream &maphtml, int mapdlay)
+{
+	// Write Beginning of HTML Header
+	maphtml << "<!DOCTYPE html>\n<html>\n	<head>\n		<meta name=\"viewport\" content=\"initial-scale=1.0, user-scalable=no\" />";
+
+	// Swtich for HTML Refresh
+	if (mapdlay != 0)
+	maphtml << "<meta http-equiv=\"refresh\" content=\"" << mapdlay << "\" />";
+
+	// Write Remaining HTML Header
+	maphtml << "\n		<style type=\"text/css\">\n			html { height: 100% }\n			body { height: 100%; margin: 0; padding: 0 }"
+		<< "\n			#map_canvas { height: 100% }\n		</style>\n		<script type=\"text/javascript\""
+		<< "\n			src=\"https://maps.googleapis.com/maps/api/js?key=AIzaSyBlMSLG5cI9PteGfyoqCG8OhkTdLqv5lmE&sensor=false\">"
+		<< "\n		</script>\n		<script type=\"text/javascript\">\n	  var map;\n      function initialize() {"
+		<< "\n	    var initialLatlng = new google.maps.LatLng(42.1653, -83.4454);\n		var lats, lngs;\n"
+		<< "\n        var mapOptions = {\n          center: initialLatlng,\n          zoom: 8,\n          mapTypeId: google.maps.MapTypeId.ROADMAP\n        }"
+		<< "\n		map = new google.maps.Map(document.getElementById(\"map_canvas\"),\n            mapOptions);\n"
+		<< "\n		lats = [";
+}
+
+void Packet::writePts(ofstream &maphtml, const string &dfilenm)
+{
+	// Open Datafile
+	ifstream gpsdat;
+	gpsdat.open(dfilenm.c_str());
+	if (!gpsdat.good()) {
+		cout << "Could not open datafile.\n";
+		return;
+	}
+
+	// Storage for Lat/Long Data
+	double lat[MAXPTS], lon[MAXPTS];
+	int numpts = 0, pnt = 0;
+
+	// Read Until File Ends
+	while (gpsdat.good()) {
+
+		// Advance Past Sensor Data
+		string tmp;
+		gpsdat >> tmp;
+		int indx = 0;
+		for (int i = 0; i < 7; ++i) {
+			indx = tmp.find('\t', indx + 1);
+		}
+
+		// Read Lattitude
+		int lnth = tmp.find('\t', indx + 1) - indx - 1;
+		if (lnth)
+			lat[pnt] = atof((tmp.substr(indx + 1, lnth)).c_str());
+		else
+			lat[pnt] = 0;
+
+		// Read Longitude
+		indx += lnth + 1;
+		lnth = tmp.find('\t', indx + 1) - indx - 1;
+		if (lnth)
+			lon[pnt] = atof((tmp.substr(indx + 1, lnth)).c_str());
+		else
+			lon[pnt] = 0;
+
+		// Increment count
+		pnt = (pnt + 1) % MAXPTS;
+		if (numpts < MAXPTS)
+			++numpts;
+	}
+
+	// Don't Use End-of-File
+	--numpts;
+
+	// Write Latitude Data
+	for (int i = 0; i < numpts; ++i)
+		maphtml << lat[i] << ",";
+	maphtml << "];\n\t\tlngs = [";
+
+	// Write Longitude Data
+	for (int i = 0; i < numpts; ++i)
+		maphtml << lon[i] << ",";
+
+	// Close Datafile
+	gpsdat.close();
+}
+
+void Packet::writeEnd(ofstream &maphtml)
+{
+	// Write File End
+	maphtml << "];\n\n		var location;"
+		<< "\n		for (var i=0; i<lats.length; i++) {\n			location = new google.maps.LatLng(lats[i], lngs[i]);"
+		<< "\n			var marker = new google.maps.Marker({\n				position: location,"
+		<< "\n				map: map,\n			});\n		}"
+		<< "\n\n	    map.setCenter(location);\n	  }\n		</script>\n	</head>\n	<body onload=\"initialize()\">"
+		<< "\n		<div id=\"map_canvas\" style=\"width:100%; height:100%\"></div>\n	</body>\n</html>";
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// Public Function Implementations
+//////////////////////////////////////////////////////////////////////////////
+
 void Packet::parseData(const unsigned char *buff, const int buff_size)
 {
-	// Repackage Packet Data
-	char tmp[MAXBUF]; // create a char[] to transfer data
-	castArray(buff, tmp, buff_size);
-	string data = tmp;
-	int ind = 0;
+	// String for Packet Data
+	string data;
 	echo = "";
+	int indx = 0;
 
-	// Try to Verify Data Packet
+	// Try to Process Data Packet
+	cout << "Verifying data packet ..... \t";
 	try {
-		cout << "Verifying data packet ..... \t";
-		verifyPacket(data);
+		// Check for Empty Packet
+		if (buff_size == 0) {
+			string error = "No Data Received.\n";
+			throw error;
+		}
 
-		// Remove Received Command
-		ind = data.find(DATDLIM);
-		if (ind)
-			echo = data.substr(0, ind);
-		data = data.substr(ind + 1);
+		// Indicate Success
+		cout << "Success.\n";
 
 	// Catch Unusable Packet
 	} catch (string error) {
@@ -257,9 +339,19 @@ void Packet::parseData(const unsigned char *buff, const int buff_size)
 		gps = false;
 		sens = false;
 		return;
+	}
 
-	// Catch Misplaced Sensor Data
-	} catch (...) { }
+
+	// Repackage Packet Data
+	char tmp[MAXBUF]; // create a char[] to transfer data
+	castArray(buff, tmp, buff_size);
+	data = tmp;
+
+	// Remove Received Command
+	indx = data.find(DATDLIM);
+	if (indx)
+		echo = data.substr(0, indx);
+	data = data.substr(indx + 1);
 
 	// Print Received Command
 	cout << "Balloon received \"" << echo << "\".\n";
@@ -276,8 +368,8 @@ void Packet::parseData(const unsigned char *buff, const int buff_size)
 	}
 
 	// Try to Parse GPS Data
-	ind = data.find(DATDLIM);
-	data = data.substr(ind + 1);
+	indx = data.find(DATDLIM);
+	data = data.substr(indx + 1);
 	try {
 		cout << "Parsing GPS data ..... \t\t";
 		parseGPS(data);
@@ -293,8 +385,14 @@ void Packet::parseData(const unsigned char *buff, const int buff_size)
 void Packet::writeData(Param &inst)
 {
 	// Write Data to File
-	cout << "Writing to file ..... \t\t";
 	if (openDFile(inst.datfile, inst.dfilenm)) {
+
+		// If All Data is Bad, Don't Write
+		if (!sens && !gps) {
+			cout << "No data to write.\n";
+			inst.datfile.close();
+			return;
+		}
 
 		// Write Sensor Data
 		if (sens)
@@ -306,9 +404,9 @@ void Packet::writeData(Param &inst)
 			inst.datfile << "\t\t\t\t\t\t\t";
 
 		// Write GPS Data
-		if (gps)
+		if (gps) {
 			inst.datfile << lat << "\t" << lng << "\t\n";
-		else
+		} else
 			inst.datfile << "\t\t\n";
 
 		// Save Datafile
@@ -317,10 +415,42 @@ void Packet::writeData(Param &inst)
 		// Indicate Success
 		cout << "Success.\n";
 
+		// Refresh HTML Map
+		if (gps) {
+			cout << "Writing new HTML file .....\t";
+			try {
+				writeHTML(inst.dfilenm, inst.mapdlay);
+			} catch (string error) {
+				cout << "Error: " << error;
+			}
+		}
+
 	// Throw Error
 	} else {
 		string error = "Error opening the datafile.\n";
 		throw error;
 	}
+}
+
+void Packet::writeHTML(const string &dfilenm, const int mapdlay)
+{
+	// Make HTML File and Write Header
+	ofstream maphtml;
+	maphtml.open("GPSmap.html", ios_base::trunc);
+	if (!maphtml.good()) {
+		string error = "Error creating html file.\n";
+		throw error;
+	}
+	writeHeader(maphtml, mapdlay);
+
+	// Read Data from File and Place on Map
+	writePts(maphtml, dfilenm);
+
+	// Write HTML File Ending and Close
+	writeEnd(maphtml);
+	maphtml.close();
+
+	// Indicate Success.
+	cout << "Success.\n";
 }
 

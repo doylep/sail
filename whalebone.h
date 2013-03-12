@@ -47,6 +47,9 @@ const string DFLTCMD = "OKAY@";
 // Data Delimeter
 const char DATDLIM = '#';
 
+// Sensor Data Delimeter
+const char SENSDLIM = ',';
+
 // Conversion Constant
 const double DCONV = 0.016666666666667;
 
@@ -110,30 +113,6 @@ void openPort(int &comnum, int &baud);
 //		modifies cin and cout
 // EFFECTS: Prompts cin until <comnum> and <baud> successfully opens port
 //		<comnum> with baudrate <baud>
-
-void writeHTML(const string &dfilenm, const int mapdlay);
-// MODIFIES: cout
-// EFFECTS: Writes the data in <dfilenm> to a map in GPSmap.html with a
-//		delay of <mapdlay>, throws an err
-
-void writeHeader(ofstream &maphtml, const int mapdlay);
-// REQUIRES: maphtml points to an open ofstream
-// MODIFIES: maphtml
-// EFFECTS: Prints the HTML header to the file for GPS mapping with refresh
-//		delay <mapdlay>, prints success to the terminal and throws
-//		an error string for failure
-
-void writePts(ofstream &maphtml, const string &dfilenm);
-// REQUIRES: maphtml points to an open ofstream, dfilenm is the name of
-//		valid datafile
-// MODIFIES: maphtml, cout
-// EFFECTS: Write the the lat and lon points in the file <dfilenm> to the
-//		HTML of maphtml
-
-void writeEnd(ofstream &maphtml);
-// REQUIRES: maphtml points to an open ofstream
-// MODIFIES: maphtml
-// EFFECTS: Prints the HTML end to the file for the GPS mapping
 
 void sendCMD(const string &cfilenm, const int comnum);
 // REQUIRES: cfilenm is the name of a valid command file, comnum is the
