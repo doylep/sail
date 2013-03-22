@@ -9,7 +9,7 @@
 #include <fstream>
 #include <string>
 #include "packet.h"
-#include "whalebone.h"
+#include "rigging.h"
 
 using namespace std;
 

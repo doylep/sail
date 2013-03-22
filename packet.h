@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "whalebone.h"
+#include "rigging.h"
 
 using namespace std;
 
@@ -31,8 +31,9 @@ class Packet{
 	double temp[2]; 	// temperature data
 	double lat;		// latitude
 	double lng;		// longitude
-	bool gps;		// flag to indicate good gps data
+	double alt;		// altitude
 	bool sens;		// flag to indicate good sensor data
+	bool gps;		// flag to indicate good gps data
 
 	double extractSens(string &raw);
 	// MODIFIES: raw, cout
@@ -52,8 +53,8 @@ class Packet{
 	//		prints success to the terminal and throws an error
 	//		string for failure
 
-	double convrtData(const string &raw);
-	// REQUIRES: raw is valid NMEA GPGGA string
+	double convrtGPS(const string &raw);
+	// REQUIRES: raw is valid NMEA GPGGA latitude or longitude string
 	// EFFECTS: Returns the string converted to decimal degrees
 
 	void writeHeader(ofstream &maphtml, const int mapdlay);

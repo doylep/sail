@@ -56,8 +56,14 @@ const double DCONV = 0.016666666666667;
 // Float Output Precision
 const int PRECSN = 10;
 
+// High Voltage
+const double HIGHV = 5.0;
+
 // Low Voltage
 const double LOWV = 3.3;
+
+// Accelerometer Calibration
+const double ACCAL[3] = {1.0725, 1.0825, 1.1050};
 
 
 //////////////////////////////////////////////////////////////////////////////

@@ -5,14 +5,14 @@
 
 
 /// Testing Switch
-// #define _LOCALTEST_
+//#define _LOCALTEST_
 
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include "packet.h"
-#include "whalebone.h"
+#include "rigging.h"
 
 using namespace std;
 
@@ -28,7 +28,7 @@ int main (int argc, char *argv[])
 	inst.datfile.precision(PRECSN);
 
 	// Program Header
-	cout << "Balloon Data, Version 0.4.0"
+	cout << "Balloon Data, Version 0.4.1 beta"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see Licence)"

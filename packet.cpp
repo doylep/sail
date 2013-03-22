@@ -9,7 +9,7 @@
 #include <fstream>
 #include <string>
 #include "packet.h"
-#include "whalebone.h"
+#include "rigging.h"
 
 using namespace std;
 
@@ -31,7 +31,7 @@ double Packet::extractSens(string &raw)
 	}
 
 	// Try to Extract Data
-	string var = raw.substr(indx, endx - indx - 1);
+	string var = raw.substr(indx, endx - indx);
 
 	// Attempt Extraction
 	double reslt;
@@ -51,6 +51,7 @@ void Packet::parseSens(string &raw)
 {
 	// Try to Extract Data
 	string dattyp;
+
 	try {
 		// Get Pressure
 		dattyp = "pressure data";
@@ -64,7 +65,7 @@ void Packet::parseSens(string &raw)
 		humd = extractSens(raw);
 
 		// Convert Humidity
-		humd = ((LOWV * humd / 1024) - 0.958) / 0.03068;
+		humd = ((HIGHV * humd / 1024) - 0.958) / 0.03068;
 
 		// Get Acceleration
 		dattyp = "acceleration data";
@@ -72,7 +73,7 @@ void Packet::parseSens(string &raw)
 			accel[i] = extractSens(raw);
 
 			// Covert Data
-			accel[i] = ((LOWV * accel[i] / 1024) - 1.0725) * (-1000 / .22);
+			accel[i] = ((LOWV * accel[i] / 1024) - ACCAL[i]) * (4545.454545);
 		}
 
 		// Get Temperature
@@ -81,7 +82,7 @@ void Packet::parseSens(string &raw)
 			temp[i] = extractSens(raw);
 
 			// Convert Data
-			temp[i] = (LOWV * temp[i] / 1024) / .01 - 32;
+			temp[i] = (LOWV * temp[i] / 1024) * 100 - 32;
 		}
 
 	} catch (string error) {
@@ -107,8 +108,8 @@ void Packet::parseGPS(const string &raw)
 
 	// Verify Length
 	indx = raw.find("$GPGGA");
-	if ((raw.size() - indx) < 42) {
-		string error = "Truncated GPS Data.\n";
+	if ((raw.size() - indx) < 75) { /// Check Correct Length !!!
+		string error = "Truncated GPS data.\n";
 		throw error;
 	}
 
@@ -120,7 +121,7 @@ void Packet::parseGPS(const string &raw)
 
 	// Check That There isn't a Comma
 	if (raw.at(indx) == ',') {
-		string error = "No Latitude Data.\n";
+		string error = "No latitude data.\n";
 		throw error;
 	}
 
@@ -141,25 +142,22 @@ void Packet::parseGPS(const string &raw)
 	}
 
 	// Try to Process Latitude
-	if (valid) {
-
-		// Extract Number and Shift Decimal Point
-		lat = convrtData(raw.substr(indx, 9));
-		char dir = raw.at(indx + 10);
-
-		// Correct North/South
-		if (dir == 'S')
-			lat = -lat;
-
-	// Else Throw Error
-	} else {
-		string error = "Bad Latitude Format.\n";
+	if (!valid) {
+		string error = "Bad latitude format.\n";
 		throw error;
 	}
 
+	// Extract Number and Change to Decimal
+	lat = convrtGPS(raw.substr(indx, 9));
+	char dir = raw.at(indx + 10);
+
+	// Correct North/South
+	if (dir == 'S')
+		lat = -lat;
+
 	// Check That There isn't a Comma
 	if (raw.at(indx + 12) == ',') {
-		string error = "No Longitude Data.\n";
+		string error = "No longitude data.\n";
 		throw error;
 	}
 
@@ -179,27 +177,57 @@ void Packet::parseGPS(const string &raw)
 	}
 
 	// Try to Process Longitude
-	if (valid) {
-
-		// Extract Number and Shift Decimal Point
-		lng = convrtData(raw.substr(indx + 12, 10));
-		char dir = raw.at(indx + 23);
-
-		// Correct East/West
-		if (dir == 'W')
-			lng = -lng;
-
-	// Else Throw Error
-	} else {
-		string error = "Bad Longitude Format.\n";
+	if (!valid) {
+		string error = "Bad longitude format.\n";
 		throw error;
 	}
+
+	// Extract Number and Change to Decimal
+	lng = convrtGPS(raw.substr(indx + 12, 10));
+	dir = raw.at(indx + 23);
+
+	// Correct East/West
+	if (dir == 'W')
+		lng = -lng;
+
+	// Interate Through 5 Commas
+	tmp = raw.substr(indx + 23);
+	for (int i = 0; i < 5; ++i) {
+		indx = indx + tmp.find(",") + 1;
+		tmp = raw.substr(indx);
+	}
+
+	// Check for Value
+	int endx = indx + tmp.find(",");
+	if (((endx - indx) < 5) || (endx - indx) > 7)
+		valid = false;
+
+	// Check Altitude Characters
+	for (int i = indx; i < endx; ++i) {
+
+		// Verify all are Numbers
+		char num = raw.at(indx + i);
+		if ((num > '9') || (num < '0')) {
+			valid = false;
+			break;
+		}
+	}
+
+	// Try to Process Altitude
+	if (!valid) {
+		string error = "Bad altitude format.\n";
+		throw error;
+	}
+
+	// Extract Number
+	tmp = raw.substr(indx, endx - indx);
+	alt = atof(tmp.c_str());
 
 	// Indicate Success
 	cout << "Success.\n";
 }
 
-double Packet::convrtData(const string &raw)
+double Packet::convrtGPS(const string &raw)
 {
 	// Extract the Minutes
 	string smin = raw.substr(raw.size() - 7, 7);
@@ -399,15 +427,15 @@ void Packet::writeData(Param &inst)
 			inst.datfile << pres << "\t" << humd << "\t"
 				<< accel[0] << "\t" << accel[1] << "\t"
 				<< accel[2] << "\t" << temp[0] << "\t"
-				<< temp[2] << "\t";
+				<< temp[1] << "\t";
 		else
 			inst.datfile << "\t\t\t\t\t\t\t";
 
 		// Write GPS Data
 		if (gps) {
-			inst.datfile << lat << "\t" << lng << "\t\n";
+			inst.datfile << lat << "\t" << lng << "\t" << alt << "\t\n";
 		} else
-			inst.datfile << "\t\t\n";
+			inst.datfile << "\t\t\t\n";
 
 		// Save Datafile
 		inst.datfile.close();
