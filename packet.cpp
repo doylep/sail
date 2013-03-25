@@ -1,6 +1,6 @@
 /*   Space Whales Team: Packet Class for Weather Balloon Ground Station
 		        Last Updated March 11, 2013
-	              Released under GNU GPL - any version
+		Released under GNU GPL - version 2 or later
 		            By The Space Whales                   	*/
 
 
@@ -8,8 +8,9 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <ctime>
 #include "packet.h"
-#include "rigging.h"
+#include "base.h"
 
 using namespace std;
 
@@ -108,7 +109,7 @@ void Packet::parseGPS(const string &raw)
 
 	// Verify Length
 	indx = raw.find("$GPGGA");
-	if ((raw.size() - indx) < 75) { /// Check Correct Length !!!
+	if ((raw.size() - indx) < 43) { /// Check Correct Length !!!
 		string error = "Truncated GPS data.\n";
 		throw error;
 	}
@@ -189,7 +190,7 @@ void Packet::parseGPS(const string &raw)
 	// Correct East/West
 	if (dir == 'W')
 		lng = -lng;
-
+/*
 	// Interate Through 5 Commas
 	tmp = raw.substr(indx + 23);
 	for (int i = 0; i < 5; ++i) {
@@ -222,6 +223,10 @@ void Packet::parseGPS(const string &raw)
 	// Extract Number
 	tmp = raw.substr(indx, endx - indx);
 	alt = atof(tmp.c_str());
+*/
+
+	/// TESTING !!!
+	alt = 0;
 
 	// Indicate Success
 	cout << "Success.\n";
@@ -421,6 +426,13 @@ void Packet::writeData(Param &inst)
 			inst.datfile.close();
 			return;
 		}
+
+		// Write Timestamp
+		time_t now;
+		char systime[20];
+		time(&now);
+		strftime(systime, 20, "%R", localtime(&now));
+		inst.datfile << systime << "\t";
 
 		// Write Sensor Data
 		if (sens)

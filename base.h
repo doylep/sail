@@ -1,6 +1,6 @@
 /*   Space Whales Team: Backbone Functions for Weather Balloon Ground Station
 		           Last Updated March 11, 2013
-	              Released under GNU GPL - any version
+		   Released under GNU GPL - version 2 or later
 		              By The Space Whales                   	 */
 
 

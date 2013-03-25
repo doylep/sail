@@ -1,5 +1,6 @@
 /*     Space Whales Team: RS232 Read From File
             Last Updated February 29, 2013
+	Released under GNU GPL - version 2 or later
 		 By The Space Whales                 */
 
 #ifndef rs232_INCLUDED

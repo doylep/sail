@@ -1,6 +1,6 @@
 /*   Space Whales Team: Packet Class for Weather Balloon Ground Station
 		        Last Updated March 11, 2013
-	              Released under GNU GPL - any version
+		   Released under GNU GPL - version 2 or later
 		            By The Space Whales                   	*/
 
 
@@ -11,9 +11,10 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "rigging.h"
+#include "base.h"
 
 using namespace std;
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -85,10 +86,10 @@ public:
 
 	void writeData(Param &inst);
 	// MODIFIES: inst.datfile, cout, GPSmap.html
-	// EFFECTS: Tries to write pket data to <inst.dfilenm>, if successful
-	//		writes the data in <dfilenm> to a map in GPSmap.html with
-	//		a delay of <mapdlay>, prints success to the terminal and
-	//		throws an error string for failure
+	// EFFECTS: Tries to write pket data to <inst.dfilenm> with a timestamp,
+	//		if successful writes the data in <dfilenm> to a map in
+	//		GPSmap.html with a delay of <mapdlay>, prints success to
+	//		the terminal and throws an error string for failure
 
 	void writeHTML(const string &dfilenm, const int mapdlay);
 	// MODIFIES: cout
