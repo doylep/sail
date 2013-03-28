@@ -41,9 +41,6 @@ const int MAXCMD = 100;
 // Command Delimeter
 const char CMDDLIM = '@';
 
-// Default Command
-const string DFLTCMD = "OKAY@";
-
 // Data Delimeter
 const char DATDLIM = '#';
 
@@ -81,6 +78,7 @@ struct Param{
 	int mapdlay;		// delay between each map refresh
 	int comnum;		// number of the com port
 	int baud;		// baud rate for the com port
+	string dfltcmd;		// default command to send to the balloon
 };
 
 
@@ -120,8 +118,8 @@ void openPort(int &comnum, int &baud);
 // EFFECTS: Prompts cin until <comnum> and <baud> successfully opens port
 //		<comnum> with baudrate <baud>
 
-void sendCMD(const string &cfilenm, const int comnum);
-// REQUIRES: cfilenm is the name of a valid command file, comnum is the
+void sendCMD(Param &inst);
+// REQUIRES: inst.cfilenm is the name of a valid command file, inst.comnum is the
 //		serial port in use
 // MODIFIES: cout
 // EFFECTS: Sends a valid command in <cfilenm> (see README) if it exists

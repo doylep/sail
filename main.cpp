@@ -28,10 +28,10 @@ int main (int argc, char *argv[])
 	inst.datfile.precision(PRECSN);
 
 	// Program Header
-	cout << "Balloon Data, Version 0.4.1 beta"
+	cout << "Balloon Data, Version 0.4.2 beta"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
-		<< "\n\nReleased under GNU GPL v2 (see Licence)"
+		<< "\n\nReleased under GNU GPL v2 (see License)"
 		<< "\n========================================\n";
 
 	// Try to Load Parameters from File
@@ -65,9 +65,18 @@ int main (int argc, char *argv[])
 		// Pause For <dlay> Seconds
 		cout << "Waiting for " << inst.dlay << " seconds.\n\n";
 		#ifdef _WIN32
-			_sleep(inst.dlay * 1000);
+			#ifdef _LOCALTEST_
+				_sleep(50);
+			# else
+				_sleep(inst.dlay * 1000);
+			#endif
 		#else
-			sleep(inst.dlay);
+			#ifdef _LOCALTEST_
+				usleep(50000);
+			# else
+				sleep(inst.dlay);
+			#endif
+
 		#endif
 
 		// Read data from the port
@@ -93,7 +102,7 @@ int main (int argc, char *argv[])
 		}
 
 		// Send Command to Balloon
-		sendCMD(inst.cfilenm, inst.comnum);
+		sendCMD(inst);
 
 	} // Close While Loop
 

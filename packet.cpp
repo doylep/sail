@@ -109,7 +109,7 @@ void Packet::parseGPS(const string &raw)
 
 	// Verify Length
 	indx = raw.find("$GPGGA");
-	if ((raw.size() - indx) < 43) { /// Check Correct Length !!!
+	if ((raw.size() - indx) < 72) {
 		string error = "Truncated GPS data.\n";
 		throw error;
 	}
@@ -117,7 +117,7 @@ void Packet::parseGPS(const string &raw)
 	// Interate Through 2 Commas
 	for (int i = 0; i < 2; ++i) {
 		tmp = raw.substr(indx);
-		indx = indx + tmp.find(",") + 1;
+		indx = indx + tmp.find(',') + 1;
 	}
 
 	// Check That There isn't a Comma
@@ -190,29 +190,19 @@ void Packet::parseGPS(const string &raw)
 	// Correct East/West
 	if (dir == 'W')
 		lng = -lng;
-/*
+
 	// Interate Through 5 Commas
-	tmp = raw.substr(indx + 23);
-	for (int i = 0; i < 5; ++i) {
-		indx = indx + tmp.find(",") + 1;
-		tmp = raw.substr(indx);
+	tmp = raw.substr(indx + 25);
+	indx = 0;
+	for (int i = 0; i < 3; ++i) {
+		indx = tmp.find(',') + 1;
+		tmp = tmp.substr(indx);
 	}
 
 	// Check for Value
-	int endx = indx + tmp.find(",");
-	if (((endx - indx) < 5) || (endx - indx) > 7)
+	indx = tmp.find(',');
+	if (indx < 5 || indx > 8)
 		valid = false;
-
-	// Check Altitude Characters
-	for (int i = indx; i < endx; ++i) {
-
-		// Verify all are Numbers
-		char num = raw.at(indx + i);
-		if ((num > '9') || (num < '0')) {
-			valid = false;
-			break;
-		}
-	}
 
 	// Try to Process Altitude
 	if (!valid) {
@@ -221,12 +211,8 @@ void Packet::parseGPS(const string &raw)
 	}
 
 	// Extract Number
-	tmp = raw.substr(indx, endx - indx);
+	tmp = tmp.substr(0, indx);
 	alt = atof(tmp.c_str());
-*/
-
-	/// TESTING !!!
-	alt = 0;
 
 	// Indicate Success
 	cout << "Success.\n";
@@ -288,9 +274,9 @@ void Packet::writePts(ofstream &maphtml, const string &dfilenm)
 
 		// Advance Past Sensor Data
 		string tmp;
-		gpsdat >> tmp;
+		getline(gpsdat, tmp);
 		int indx = 0;
-		for (int i = 0; i < 7; ++i) {
+		for (int i = 0; i < 10; ++i) {
 			indx = tmp.find('\t', indx + 1);
 		}
 
@@ -386,8 +372,24 @@ void Packet::parseData(const unsigned char *buff, const int buff_size)
 		echo = data.substr(0, indx);
 	data = data.substr(indx + 1);
 
+	// Remove Flight Time
+	indx = data.find(DATDLIM);
+	if (indx) {
+		string tmp1 = data.substr(0, indx);
+		int tmp2 = atoi(tmp1.c_str());
+		fltme.tm_sec = tmp2 % 60;
+		fltme.tm_min = (tmp2 / 60) % 60;
+		fltme.tm_hour = tmp2 / 3600;
+	}
+	data = data.substr(indx + 1);
+
+	// Print Flight Time
+	char flttime[20];
+	strftime(flttime, 20, "%T", &fltme);
+	cout << "Flight Time: " << flttime << "\t\t";
+
 	// Print Received Command
-	cout << "Balloon received \"" << echo << "\".\n";
+	cout << "Balloon received \"" << echo << "\"\n";
 
 	// Try to Parse Sensor Data
 	try {
@@ -407,6 +409,9 @@ void Packet::parseData(const unsigned char *buff, const int buff_size)
 		cout << "Parsing GPS data ..... \t\t";
 		parseGPS(data);
 		gps = true;
+
+		// Print Altitude
+		cout << "Current Altitude: " << alt << " meters.\n";
 
 	// Catch Bad GPS Data
 	} catch (string error) {
@@ -431,8 +436,16 @@ void Packet::writeData(Param &inst)
 		time_t now;
 		char systime[20];
 		time(&now);
-		strftime(systime, 20, "%R", localtime(&now));
+		strftime(systime, 20, "%T", localtime(&now));
 		inst.datfile << systime << "\t";
+
+		// Write Time of Flight
+		char flttime[20];
+		strftime(flttime, 20, "%T", &fltme);
+		inst.datfile << flttime << "\t";
+
+		// Write Echo
+		inst.datfile << echo << "\t";
 
 		// Write Sensor Data
 		if (sens)

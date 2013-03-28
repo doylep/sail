@@ -45,7 +45,7 @@ bool loadParam(Param &inst, const string &filenm)
 
 	// Read parameters
 	file >> inst.dfilenm >> inst.cfilenm >> inst.dlay >> inst.mapdlay
-		>> inst.comnum >> inst.baud;
+		>> inst.comnum >> inst.baud >> inst.dfltcmd;
 
 	// Attempt to Open Port
 	if (RS232_OpenComport(inst.comnum, inst.baud)) {
@@ -90,6 +90,8 @@ void promptParam(Param &inst)
 
 	// Prompt for and Open Serial Port
 	openPort(inst.comnum, inst.baud);
+
+	// Prompt for Default Command
 }
 
 bool openDFile(ofstream &file, const string &filenm)
@@ -139,15 +141,14 @@ void openPort(int &comnum, int &baud)
 	}
 }
 
-void sendCMD(const string &cfilenm, const int comnum)
+void sendCMD(Param &inst)
 {
 	// Open Command File
-	ifstream cmdfile;
-	openCFile(cmdfile, cfilenm);
+	openCFile(inst.cmdfile, inst.cfilenm);
 
 	// Read Line into String
 	string cmd;
-	cmdfile >> cmd;
+	inst.cmdfile >> cmd;
 
 	// Check for a Valid Command
 	unsigned char mssg[MAXCMD + 1];
@@ -159,17 +160,17 @@ void sendCMD(const string &cfilenm, const int comnum)
 	// Use Default Command
 	} else {
 		cout << "Sending default command ..... \t";
-		mssg_size = DFLTCMD.size();
-		castArray(DFLTCMD.c_str(), mssg, mssg_size);
+		mssg_size = inst.dfltcmd.size();
+		castArray(inst.dfltcmd.c_str(), mssg, mssg_size);
 	}
 
 	// Transmit Command
-	if (RS232_SendBuf(comnum, mssg, mssg_size) != mssg_size)
+	if (RS232_SendBuf(inst.comnum, mssg, mssg_size) != mssg_size)
 		cout << "Error sending command.\n";
 	else
 		cout << "Success.\n";
 
 	// Close Command File
-	cmdfile.close();
+	inst.cmdfile.close();
 }
 

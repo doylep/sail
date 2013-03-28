@@ -16,7 +16,6 @@
 using namespace std;
 
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// Class Function Declarations
 //////////////////////////////////////////////////////////////////////////////
@@ -26,6 +25,7 @@ class Packet{
 // balloon packet
 
 	string echo;		// balloon echo
+	tm fltme;		// flight time (as determined by balloon)
 	double pres;		// pressure
 	double humd;		// humidity
 	double accel[3];	// acceleration data
