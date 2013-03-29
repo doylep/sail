@@ -15,7 +15,10 @@ The best programs always start by telling you what they can't do, so here are so
 sail only works with a single packet format.  If you can't comform your data to that packet style, you'll have to make some code modifications and recompile to fit your needs.  We'd love it if you're willing to fork the project and share your version with us.
 sail doesn't have a GUI, and sending commands to the balloon is correspondingly ugly.
 To effectively use sail, you'll also need to open a browser and a spreadsheet program.  Only data interpretation and storage is built into sail.
-It only works for flights under 24 hours (because of a time storage decision).  If you're running flights longer than that, give me a call because you deserve an award.  Or just 
+It only works for flights under 24 hours (because of a time storage decision).  If you're running flights longer than that, give me a call because you deserve an award.
+
+*Known Issues*
+Loading parameters from a file does not check their validity.  An invalid parameter in the file can cause the program to hang or crash.
 
 
 ------------
@@ -67,6 +70,15 @@ If valid GPS data was received in the packet, the program reads all GPS data fro
 Commands are sent to the balloon from a file (appropriately named the command file).  To be sent, command in the file must contain no spaces and be terminated with global constant "CMDDLIM" ('@' by default).  Only commands that follow this structure will be transmitted.
 
 After sending commands, the program will pause for the given delay and start the cycle again.
+
+
+-----------
+
+Local Version
+-----------
+
+Compiling the program with the flag "_LOCALTEST_" against the file rsfile.cpp instead of rs232.c creates a version of the program for local testing.  Instead of reading from a serial port, the local version will use two files (one for input, one for output) so that you can test data handling without setting up the full balloon system.
+
 
 -----------
 
