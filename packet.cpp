@@ -110,7 +110,7 @@ void Packet::parseGPS(const string &raw)
 	// Verify Length
 	indx = raw.find("$GPGGA");
 	if ((raw.size() - indx) < 72) {
-		string error = "Truncated GPS data.\n";
+		string error = "Incomplete GPS data.\n";
 		throw error;
 	}
 
