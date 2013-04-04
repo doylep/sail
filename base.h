@@ -38,6 +38,12 @@ const int MAXGPSDAT = 50;
 // Maximum Command String Size
 const int MAXCMD = 100;
 
+// Program Termination Command
+const string STOPSAIL = "Stop";
+
+// Program Silent Mode Command
+const string SLNTMODE = "Silent";
+
 // Command Delimeter
 const char CMDDLIM = '@';
 
@@ -118,11 +124,13 @@ void openPort(int &comnum, int &baud);
 // EFFECTS: Prompts cin until <comnum> and <baud> successfully opens port
 //		<comnum> with baudrate <baud>
 
-void sendCMD(Param &inst);
+bool sendCMD(Param &inst);
 // REQUIRES: inst.cfilenm is the name of a valid command file, inst.comnum is the
 //		serial port in use
 // MODIFIES: cout
-// EFFECTS: Sends a valid command in <cfilenm> (see README) if it exists
-//		and sends a default command if not
+// EFFECTS: Returns 1 if the <STOPSAIL> is in <cfilenm>, Prints to the cout if
+//		<SLNTMODE> is in <cfilenm>, otherwise sends a valid command in
+//		<cfilenm> (see README) if it exists and sends a default command
+//		if not
 
 #endif // __WHALEBONE_H__

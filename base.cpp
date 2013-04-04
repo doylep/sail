@@ -141,7 +141,7 @@ void openPort(int &comnum, int &baud)
 	}
 }
 
-void sendCMD(Param &inst)
+bool sendCMD(Param &inst)
 {
 	// Open Command File
 	openCFile(inst.cmdfile, inst.cfilenm);
@@ -149,6 +149,19 @@ void sendCMD(Param &inst)
 	// Read Line into String
 	string cmd;
 	inst.cmdfile >> cmd;
+
+	// Check for Program Termination
+	if (cmd == STOPSAIL) {
+		inst.cmdfile.close();
+		return true;
+	}
+
+	// Check for Silent Mode
+	if (cmd == SLNTMODE) {
+		cout << "Operating in silent mode.\n";
+		inst.cmdfile.close();
+		return false;
+	}
 
 	// Check for a Valid Command
 	unsigned char mssg[MAXCMD + 1];
@@ -172,5 +185,8 @@ void sendCMD(Param &inst)
 
 	// Close Command File
 	inst.cmdfile.close();
+
+	// Indicate Normal Command
+	return false;
 }
 

@@ -101,13 +101,16 @@ int main (int argc, char *argv[])
 			cout << "Error: " << error;
 		}
 
-		// Send Command to Balloon
-		sendCMD(inst);
+		// Send Command to Balloon and Check for Termination
+		if (sendCMD(inst))
+			break;
 
 	} // Close While Loop
 
 	// Close the Port
+	cout << "Program Terminating ..... \t";
 	RS232_CloseComport(inst.comnum);
+	cout << "Success.\n\n";
 
 	// Exit
 	return 0;
