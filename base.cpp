@@ -15,7 +15,7 @@ using namespace std;
 
 
 //////////////////////////////////////////////////////////////////////////////
-/// Backbone Function Implementations
+/// Base Function Implementations
 //////////////////////////////////////////////////////////////////////////////
 
 void castArray(const char array1[], unsigned char array2[], const int arr_size)
@@ -61,10 +61,10 @@ bool loadParam(Param &inst, const string &filenm)
 void promptParam(Param &inst)
 {
 	// Prompt for Datafile and Open
-	cout << "File to store incoming data:\n";
+	cout << "File to store incoming data: ";
 	cin >> inst.dfilenm;
 	while (!openDFile(inst.datfile, inst.dfilenm)) {
-		cout << "File to store incoming data:\n";
+		cout << "File to store incoming data: ";
 		cin >> inst.dfilenm;
 	}
 
@@ -72,26 +72,28 @@ void promptParam(Param &inst)
 	inst.datfile.close();
 
 	// Prompt for Command File
-	cout << "File to send commands to balloon:\n";
+	cout << "File to send commands to balloon: ";
 	cin >> inst.cfilenm;
 	while (!openCFile(inst.cmdfile, inst.cfilenm)){
-		cout << "File to send commands to balloon:\n";
+		cout << "File to send commands to balloon: ";
 		cin >> inst.cfilenm;
 	}
 
 	// Prompt for Program Refresh Rate
-	cout << "Delay between each data read (in seconds):\n";
+	cout << "Delay between each data read (in seconds): ";
 	cin >> inst.dlay;
 
 	// Prompt for HTML Refresh Rate
-	cout << "Delay between each HTML refresh (in seconds):"
-		<< "\n[Zero for never]\n";
+	cout << "Delay between each HTML refresh (in seconds) "
+		<< "[zero for never]: ";
 	cin >> inst.mapdlay;
 
 	// Prompt for and Open Serial Port
 	openPort(inst.comnum, inst.baud);
 
 	// Prompt for Default Command
+	cout << "Default command to send to the balloon: ";
+	cin >> inst.dfltcmd;
 }
 
 bool openDFile(ofstream &file, const string &filenm)
@@ -123,20 +125,46 @@ bool openCFile(ifstream &file, const string &filenm)
 void openPort(int &comnum, int &baud)
 {
 	// Prompt for Port
-	cout << "Comport to open:\n[Start at 0 for Windows and 16 for Linux]\n";
+	cout << "USB ports start at 0 for Windows and 16 for Linux.\n"
+		<< "Entering -1 will use the first available port.\n"
+		<< "Comport to open: ";
 	cin >> comnum;
 
 	// Prompt for Baudrate
-	cout << "Baudrate for the comport:\n";
+	cout << "Baudrate for the comport: ";
 	cin >> baud;
+
+	// Search for Available Ports
+	if (comnum == -1) {
+
+		cout << "Trying to use first available port.\n";
+		comnum = 0;
+
+		// Cycle Though Ports
+		while (RS232_OpenComport(comnum, baud)) {
+
+			// Advance comnum
+			++comnum;
+
+			// Maximum Port Number
+			if (comnum > 29) {
+				cout << "No ports available.\n";
+				openPort(comnum, baud);
+				break;
+			}
+		}
+
+	// Success;
+	return;
+	}
 
 	// Attempt to Open Port
 	while (RS232_OpenComport(comnum, baud)) {
 
 		// Ask for New Values
-		cout << "Error opening the port. Enter new port number:\n";
+		cout << "Error opening the port.\nEnter new port number: ";
 		cin >> comnum;
-		cout << "Baudrate for the comport:\n";
+		cout << "Baudrate for the comport: ";
 		cin >> baud;
 	}
 }

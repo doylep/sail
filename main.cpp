@@ -28,7 +28,7 @@ int main (int argc, char *argv[])
 	inst.datfile.precision(PRECSN);
 
 	// Program Header
-	cout << "sail - Version 0.4.2 beta"
+	cout << "sail - Version 0.4.4 beta"
 		<< "\nDesigned by the Space Whale team"
 		<< "\nCopyright (C) Patton Doyle and Molly Flynn"
 		<< "\n\nReleased under GNU GPL v2 (see License)"

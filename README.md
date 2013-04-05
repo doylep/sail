@@ -13,12 +13,17 @@ Limitations
 
 The best programs always start by telling you what they can't do, so here are some critical limitations:
 sail only works with a single packet format.  If you can't comform your data to that packet style, you'll have to make some code modifications and recompile to fit your needs.  We'd love it if you're willing to fork the project and share your version with us.
+
 sail doesn't have a GUI, and sending commands to the balloon is correspondingly ugly.
+
 To effectively use sail, you'll also need to open a browser and a spreadsheet program.  Only data interpretation and storage is built into sail.
+
 It only works for flights under 24 hours (because of a time storage decision).  If you're running flights longer than that, give me a call because you deserve an award.
 
 *Known Issues*
 Loading parameters from a file does not check their validity.  An invalid parameter in the file can cause the program to hang or crash.
+
+When cycling through ports, the program prints a lot of errors.  I haven't figured out how to resolve with without editing the RS232 library, which would be unfortunate.
 
 
 ------------
@@ -27,6 +32,7 @@ Setup
 ------------
 
 *Parameters to the Program*
+
 Datafile - file to store data about the flight in tab separated form
 Commandfile - file to send commands to the balloon
 Program Delay - delay between each read/write cycle (in seconds)
@@ -38,6 +44,9 @@ Default Command - command sent the balloon every cycle before
 *Initialization*
 At startup, the program attempts to open default.config.  If it is unable, it prompts you to input the parameters to the program.  You can bypass default.config by specifying '-s' in the terminal with or without a corresponding file to open instead.  If you specify a different configuration file (or use a default one), the file must contain the parameters separated by line in the following order and without any spaces:
 [ Datafile | Commandfile | Program Delay | HTML Delay | Port Number | Baud Rate | Default Command ]
+
+As of Version 0.4.4, if you give it port -1, the program will cycle though all the available ports and try to find one with the given baudrate.  Sorry for all the error messages.
+
 
 ------------
 
