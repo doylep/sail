@@ -99,6 +99,7 @@ void Packet::parseGPS(const string &raw)
 {
 	// Local Variables
 	int indx = 0;
+	int endx = 0;
 	string tmp;
 
 	// Check for "$GPGGA"
@@ -107,9 +108,16 @@ void Packet::parseGPS(const string &raw)
 		throw error;
 	}
 
-	// Verify Length
+	// Verify GPS Lock
 	indx = raw.find("$GPGGA");
-	if ((raw.size() - indx) < 72) {
+	endx = raw.find("#", indx);
+	if ((endx - indx) == 47) {
+		string error = "No GPS Lock.\n";
+		throw error;
+	}
+
+	// Verify Length
+	if ((endx - indx) < 72) {
 		string error = "Incomplete GPS data.\n";
 		throw error;
 	}
