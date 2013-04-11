@@ -59,14 +59,20 @@ void Packet::parseSens(string &raw)
 		pres = extractSens(raw);
 
 		// Convert Pressure
-		pres /= (1024 * 0.00776);
+		pres = pres * 0.108506944 - 4.44444444;
+			// MPX5100 with Arduino at 1024 resolution
+			// 5V sensor voltage input
+			// Output in kPa
 
 		// Get Humidity
 		dattyp = "humidity data";
 		humd = extractSens(raw);
 
 		// Convert Humidity
-		humd = ((HIGHV * humd / 1024) - 0.958) / 0.03068;
+		humd = humd * 0.157510081 - 25.806451613;
+			// HIH-4030 with Arduino at 1024 resolution
+			// 5V sensor voltage input
+			// Output as Relative Humidity
 
 		// Get Acceleration
 		dattyp = "acceleration data";
@@ -74,7 +80,9 @@ void Packet::parseSens(string &raw)
 			accel[i] = extractSens(raw);
 
 			// Covert Data
-			accel[i] = ((LOWV * accel[i] / 1024) - ACCAL[i]) * (4545.454545);
+			accel[i] = (accel[i] - ACCALSUB[i]) * ACCALMULT[i];
+				// Hand calibrated, see base.h
+				// Output in mG
 		}
 
 		// Get Temperature
@@ -83,7 +91,10 @@ void Packet::parseSens(string &raw)
 			temp[i] = extractSens(raw);
 
 			// Convert Data
-			temp[i] = (LOWV * temp[i] / 1024) * 100 - 32;
+			temp[i] = temp[i] * 0.48828125 - 50;
+				// TMP36 with Arduino at 1024 resolution
+				// 3.3V sensor voltage input
+				// Output in Celcius
 		}
 
 	} catch (string error) {

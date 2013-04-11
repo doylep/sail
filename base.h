@@ -47,26 +47,21 @@ const string SLNTMODE = "Silent";
 // Command Delimeter
 const char CMDDLIM = '@';
 
-// Data Delimeter
+// Data Field Delimeter
 const char DATDLIM = '#';
 
 // Sensor Data Delimeter
 const char SENSDLIM = ',';
 
-// Conversion Constant
-const double DCONV = 0.016666666666667;
-
 // Float Output Precision
 const int PRECSN = 10;
 
-// High Voltage
-const double HIGHV = 5.0;
-
-// Low Voltage
-const double LOWV = 3.3;
+// GPS Data Conversion Constant
+const double DCONV = 0.016666666666667;
 
 // Accelerometer Calibration
-const double ACCAL[3] = {1.0725, 1.0825, 1.1050};
+const double ACCALSUB[3] = {342, 342.5, 349};
+const double ACCALMULT[3] = {0.014285714, 0.013986014, 0.014492754};
 
 
 //////////////////////////////////////////////////////////////////////////////
