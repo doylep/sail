@@ -5,6 +5,7 @@ This is a terminal program designed for serial communication with a weather ball
 
 This program is in beta status.  It's fit for most purposes and tested thoroughly on our setup, but you may see problems and even the occasional crash.  The program stores all data externally, so you shouldn't experience data loss even in the event of a crash.
 
+If you would like to use this program for a flight of your own, I would love to help to customize it for your needs.  Feel free to email me at doylep@umich.edu.
 
 ------------
 
@@ -12,18 +13,14 @@ Limitations
 ------------
 
 The best programs always start by telling you what they can't do, so here are some critical limitations:
-sail only works with a single packet format.  If you can't comform your data to that packet style, you'll have to make some code modifications and recompile to fit your needs.  We'd love it if you're willing to fork the project and share your version with us.
-
-sail doesn't have a GUI, and sending commands to the balloon is correspondingly ugly.
-
-To effectively use sail, you'll also need to open a browser and a spreadsheet program.  Only data interpretation and storage is built into sail.
-
-It only works for flights under 24 hours (because of a time storage decision).  If you're running flights longer than that, give me a call because you deserve an award.
+- sail only works with a single packet format.  If you can't comform your data to that packet style, you'll have to make some code modifications and recompile to fit your needs.  We'd love it if you're willing to fork the project and share your version with us.
+- sail doesn't have a GUI, and sending commands to the balloon is correspondingly ugly.
+- To effectively use sail, you'll also need to open a browser and a spreadsheet program.  Only data interpretation and storage is built into sail.
+- It only works for flights under 24 hours (because of a time storage decision).  If you're running flights longer than that, give me a call because you deserve an award.
 
 *Known Issues*
-Loading parameters from a file does not check their validity.  An invalid parameter in the file can cause the program to hang or crash.
-
-When cycling through ports, the program prints a lot of errors.  I haven't figured out how to resolve with without editing the RS232 library, which would be unfortunate.
+- Loading parameters from a file does not check their validity.  An invalid parameter in the file can cause the program to hang or crash.
+- When cycling through ports, the program prints a lot of errors.  I haven't figured out how to resolve with without editing the RS232 library, which would be unfortunate.
 
 
 ------------
@@ -33,15 +30,16 @@ Setup
 
 *Parameters to the Program*
 
-Datafile - file to store data about the flight in tab separated form
-Commandfile - file to send commands to the balloon
-Program Delay - delay between each read/write cycle (in seconds)
-HTML Delay - time between each refresh for the Google Maps webpage (in seconds).  A value of zero means the webpage will never refresh.
-Port Number - port number to use to communicate with the balloon.  On Windows, USB ports begin at 1.  On Linux, serial ports begin at 0 and USB ports begin at 16.
-Baud Rate - baud rate for communication
-Default Command - command sent the balloon every cycle before
+- Datafile - file to store data about the flight in tab separated form
+- Commandfile - file to send commands to the balloon
+- Program Delay - delay between each read/write cycle (in seconds)
+- HTML Delay - time between each refresh for the Google Maps webpage (in seconds).  A value of zero means the webpage will never refresh.
+- Port Number - port number to use to communicate with the balloon.  On Windows, USB ports begin at 1.  On Linux, serial ports begin at 0 and USB ports begin at 16.
+- Baud Rate - baud rate for communication
+- Default Command - command sent the balloon every cycle before
 
 *Initialization*
+
 At startup, the program attempts to open default.config.  If it is unable, it prompts you to input the parameters to the program.  You can bypass default.config by specifying '-s' in the terminal with or without a corresponding file to open instead.  If you specify a different configuration file (or use a default one), the file must contain the parameters separated by line in the following order and without any spaces:
 [ Datafile | Commandfile | Program Delay | HTML Delay | Port Number | Baud Rate | Default Command ]
 
@@ -62,20 +60,27 @@ Once the program cycle has begun, the program performs a series of tasks before 
 Descriptions of these steps are below.
 
 *Reading Data from the Port*
+
 This process is straightforward.  If the port is no longer accessible, an error will print to the screen.
 
 *Interpreting the Data*
+
 The program is designed to interpret data in the following form:
-<echo>#<tof>#<pressure>,<humidity>,<accel x>,<accel y>,<accel z>,<temp 1>,<temp 2>,#<GPS string>
+
+echo#tof#pressure,humidity,accel x,accel y,accel z,temp 1,temp 2,#GPS string#
+
 where echo is an echo of the command received by the balloon and tof is the time of flight (in seconds).  The calibration of the sensors will largely be application specific.  Contact Patton Doyle (doylep@umich.edu) for assitance.
 
 *Writing Data to a File*
+
 The validity of sensor and GPS data is determined separately.  If one, the other, or both are valid, they are appended to the datafile in tab-delimited form along with other instance information.  The order of data is <timestamp><tof><echo><converted sensor data><latitude><longitude>.
 
 *Rewriting the Map*
+
 If valid GPS data was received in the packet, the program reads all GPS data from the datafile and composes it into a Google Map webpage named GPSmap.html.
 
 *Sending Commands*
+
 Commands are sent to the balloon from a file (appropriately named the command file).  To be sent, command in the file must contain no spaces and be terminated with global constant "CMDDLIM" ('@' by default).  Only commands that follow this structure will be transmitted.
 
 After sending commands, the program will pause for the given delay and start the cycle again.
